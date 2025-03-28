@@ -239,6 +239,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Benefeciaries_Data.cs" />
+    <Compile Include="CtcByClientMaster.cs" />
     <Compile Include="CTC_new joiner.cs" />
     <Compile Include="Existing_Changes_Master.cs" />
     <Compile Include="Joiner-Leaver_Master.cs" />
@@ -250,6 +251,7 @@
     <Compile Include="ProjectInstaller.Designer.cs">
       <DependentUpon>ProjectInstaller.cs</DependentUpon>
     </Compile>
+    <Compile Include="QuerySheet.cs" />
     <Compile Include="Rehire_Master.cs" />
     <Compile Include="Service1.cs">
       <SubType>Component</SubType>

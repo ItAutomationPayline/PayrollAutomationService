@@ -28,7 +28,7 @@ namespace ExcelAutomationService
                         outputWorksheet.Cells[1, 2].Value = "Primary NameAsPerBank";
                         outputWorksheet.Cells[1, 3].Value = "Primary Bank A / c No";
                         outputWorksheet.Cells[1, 4].Value = "Primary IFSC";
-                        outputWorksheet.Cells[1, 5].Value = " Primary Bank Code";
+                        outputWorksheet.Cells[1, 5].Value = "Primary Bank Code";
                         outputWorksheet.Cells[1, 6].Value = "Bank Name";
                         int hrid = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "HR ID");
                         int bn = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Bank Name");
@@ -124,6 +124,7 @@ namespace ExcelAutomationService
                         {
                             outputPackage.SaveAs(newFileInfo);
                             outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
+                            Service1.Log("Beneficiaries data Created Successfully");
                             Service1.FileCount++;
                         }
                         else {

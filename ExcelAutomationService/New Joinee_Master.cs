@@ -190,6 +190,42 @@ namespace ExcelAutomationService
                         outputWorksheet.Cells[1, 115].Value = "Training End Date (YYYY-MM-DD)";
                         outputWorksheet.Cells[1, 116].Value = "Probation End Date (YYYY-MM-DD)";
                         int row7 = 2;
+                        Dictionary<string, string> AscentLocations = new Dictionary<string, string>();
+                        Dictionary<string, string> AscentGrades = new Dictionary<string, string>();
+                        Dictionary<string, string> AscentBanksDetailed = new Dictionary<string, string>();
+                        using (var package2 = new ExcelPackage(new FileInfo(ascendcodes)))
+                        {
+                            var LocationSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Locations")];
+                            int LocationsLastRow = LocationSheet.Dimension.End.Row;
+                            int description = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "description");
+                            int code = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= LocationsLastRow; row3++)
+                            {
+                                if (!AscentLocations.ContainsKey(Service1.ShrinkString(LocationSheet.Cells[row3, description].Text)))
+                                    AscentLocations.Add(Service1.ShrinkString( LocationSheet.Cells[row3, description].Text), LocationSheet.Cells[row3, code].Text);
+                            }
+                            var GradeSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Grades")];
+                            int GradeLastRow = GradeSheet.Dimension.End.Row;
+                            description = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "description");
+                            code = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= GradeLastRow; row3++)
+                            {
+                                if (!AscentGrades.ContainsKey(GradeSheet.Cells[row3, description].Text))
+                                    AscentGrades.Add(GradeSheet.Cells[row3, description].Text, GradeSheet.Cells[row3, code].Text);
+                            }
+                            var BankSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Banks Detailed")];
+                            int BankLastRow = BankSheet.Dimension.End.Row;
+                            description = Service1.getColumnNumber(ascendcodes, BankSheet.ToString(), "Name of Bank");
+                            code = Service1.getColumnNumber(ascendcodes, BankSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= BankLastRow; row3++)
+                            {
+                                if (!AscentBanksDetailed.ContainsKey(BankSheet.Cells[row3, description].Text))
+                                    AscentBanksDetailed.Add(BankSheet.Cells[row3, description].Text, BankSheet.Cells[row3, code].Text);
+                            }
+                        }
                         for (row = 2; row <= lastRow; row++)
                         {
                             var cell = inputWorkSheet.Cells[row, employeenumber];
@@ -227,7 +263,6 @@ namespace ExcelAutomationService
                                 //Method to Validate Gender
                                 Gender = Service1.ValidateGender(Gender);
                                 outputWorksheet.Cells[row7, 2].Value = Gender;
-
                                 var fatherhusband = inputWorkSheet.Cells[row, FatherorHusbandName].Text;
                                 outputWorksheet.Cells[row7, 6].Value = fatherhusband;
                                 var Emprelation = inputWorkSheet.Cells[row, relation].Text;
@@ -258,16 +293,6 @@ namespace ExcelAutomationService
                                 //Method to validate marital status
                                 MaritalStatus = Service1.ValidateMaritalStatus(MaritalStatus);
                                 outputWorksheet.Cells[row7, 9].Value = MaritalStatus;
-                                //var Address = inputWorkSheet.Cells[row, add1].GetValue<string>();
-                                //outputWorksheet.Cells[row7, 14].Value = Address;
-                                //Address = inputWorkSheet.Cells[row, add2].GetValue<string>();
-                                //outputWorksheet.Cells[row7, 15].Value = Address;
-                                //Address = inputWorkSheet.Cells[row, add3].GetValue<string>();
-                                //outputWorksheet.Cells[row7, 16].Value = Address;
-                                //Address = inputWorkSheet.Cells[row, town].GetValue<string>();
-                                //outputWorksheet.Cells[row7, 17].Value = Address;
-                                //Address = inputWorkSheet.Cells[row, pincode].GetValue<string>();
-                                //outputWorksheet.Cells[row7, 19].Value = Address;
                                 var email = inputWorkSheet.Cells[row, emailid].GetValue<string>();
                                 outputWorksheet.Cells[row7, 69].Value = email;
                                 var empgr = inputWorkSheet.Cells[row, EmployeeGrade].Text;
@@ -451,21 +476,18 @@ namespace ExcelAutomationService
                                                     outputWorksheet.Cells[row7, 28].Value = Ascendsheet.Cells[row5, 1].GetValue<string>();
                                                 }
                                             }
-                                            for (int row3 = 1; row3 <= LocationsLastRow; row3++)
+                                            string loc = outputWorksheet.Cells[row7, 56].Text;
+                                            loc = loc.Replace("Remote - IND -", "");
+                                            loc=Service1.ShrinkString(loc);
+                                            if (AscentLocations.ContainsKey(loc))
                                             {
-                                                if (Service1.ShrinkString(LocationSheet.Cells[row3, description].Text).Equals(Service1.ShrinkString(outputWorksheet.Cells[row7, 56].Text)))
-                                                {
-                                                    outputWorksheet.Cells[row7, 56].Value = LocationSheet.Cells[row3, code].Text;
-                                                }
+                                                outputWorksheet.Cells[row7, 56].Value = AscentLocations[loc];
                                             }
-                                            description = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "description");
-                                            code = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "code");
-                                            for (int row3 = 1; row3 <= GradeLastRow; row3++)
+                                            string grd = inputWorkSheet.Cells[row, EmployeeGrade].Text;
+                                            
+                                            if (AscentGrades.ContainsKey(grd))
                                             {
-                                                if ((GradeSheet.Cells[row3, description].Text.ToLower().Equals(inputWorkSheet.Cells[row, EmployeeGrade].Text.ToLower()))&& (inputWorkSheet.Cells[row, EmployeeGrade].Text.ToLower() != "") && (GradeSheet.Cells[row3, description].Text.ToLower() != ""))
-                                                {
-                                                    outputWorksheet.Cells[row7, 52].Value = GradeSheet.Cells[row3, code].Text;
-                                                }
+                                                outputWorksheet.Cells[row7, 52].Value = AscentGrades[grd];
                                             }
                                         }
                                     }
@@ -491,9 +513,19 @@ namespace ExcelAutomationService
                                 htmlTable.Append("</tr>");
                             }
                             htmlTable.Append("</table>");
-                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert: Nationality in new joiner";
-                            string body = "The nationality of new joinners is different in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Please take necessary actions.<br><br>Regards,<br>Automation Team";
-                            Service1.SendEmails(Service1.recipients, subject, body);
+                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alerts";
+                            string body = "The nationality of new joinners is different in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString()+"<br>Please check the Expat PF contribution";
+                            if (Service1.subject == "") 
+                            {
+                                Service1.subject = subject;
+                            }
+                            Service1.body = Service1.body+body;
+                            // Service1.SendEmails(Service1.recipients, subject, body);
+                            QuerySheet.NewJoinerNationalityQuery(destinationFolder, CautionId, CautionNationality);
+                            foreach (string item in CautionId)
+                            {
+                                Service1.PathLog(item + ": Please check the Expat PF contribution as Nationality is not indian");
+                            }
                         }
                         string newFileName = Path.Combine(destinationFolder, Service1.FileCount + "]New Joinee_Master" + Path.GetFileName(filePath));
                         FileInfo newFileInfo = new FileInfo(newFileName);
@@ -504,6 +536,7 @@ namespace ExcelAutomationService
                         {
                             outputPackage.SaveAs(newFileInfo);
                             outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
+                            Service1.Log("New Joiners Created Successfully");
                             Service1.FileCount++;
                         }
                         else

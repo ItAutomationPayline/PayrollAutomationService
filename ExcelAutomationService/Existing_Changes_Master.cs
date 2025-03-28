@@ -180,6 +180,31 @@ namespace ExcelAutomationService
                         outputWorksheet.Cells[1, 115].Value = "Training End Date (YYYY-MM-DD)";
                         outputWorksheet.Cells[1, 116].Value = "Probation End Date (YYYY-MM-DD)";
                         int row7 = 2;
+                        Dictionary<string, string> AscentLocations=new Dictionary<string, string>();
+                        Dictionary<string, string> AscentGrades = new Dictionary<string, string>();
+                        using (var package2 = new ExcelPackage(new FileInfo(ascendcodes)))
+                        {
+                            var LocationSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Locations")];
+                            int LocationsLastRow = LocationSheet.Dimension.End.Row;
+                            int description = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "description");
+                            int code = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= LocationsLastRow; row3++)
+                            {
+                                if (!AscentLocations.ContainsKey(LocationSheet.Cells[row3, description].Text))
+                                    AscentLocations.Add(LocationSheet.Cells[row3,description].Text, LocationSheet.Cells[row3, code].Text);
+                            }
+                            var GradeSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Grades")];
+                            int GradeLastRow = GradeSheet.Dimension.End.Row;
+                            description = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "description");
+                            code = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= GradeLastRow; row3++)
+                            {
+                                if (!AscentGrades.ContainsKey(GradeSheet.Cells[row3, description].Text))
+                                    AscentGrades.Add(GradeSheet.Cells[row3, description].Text, GradeSheet.Cells[row3, code].Text);
+                            }
+                        }
                         for (row = 2; row <= lastRow; row++)
                         {
                             var cell = inputWorkSheet.Cells[row, employeenumber];
@@ -353,21 +378,9 @@ namespace ExcelAutomationService
                                 if (!string.IsNullOrEmpty(bgColor.Rgb) && !bgColor.Rgb.Equals("FFFFFF"))
                                 {
                                     outputWorksheet.Cells[row7, 56].Value = PTLocation;
-                                    using (var package2 = new ExcelPackage(new FileInfo(ascendcodes)))
+                                    if (AscentLocations.ContainsKey(PTLocation))
                                     {
-                                        int t = Service1.getSheetNumber(ascendcodes, "Locations");
-                                        var LocationSheet = package2.Workbook.Worksheets[t];
-                                        int LocationsLastRow = LocationSheet.Dimension.End.Row;
-                                        int description = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "description");
-                                        int code = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "code");
-                                       
-                                        for (int row3 = 1; row3 <= LocationsLastRow; row3++)
-                                        {
-                                            if ((Service1.ShrinkString(LocationSheet.Cells[row3, description].Text).Equals(Service1.ShrinkString(outputWorksheet.Cells[row7, 56].Text)))&&(outputWorksheet.Cells[row7, 56].Text!="") && (LocationSheet.Cells[row3, description].Text != ""))
-                                            {
-                                                outputWorksheet.Cells[row7, 56].Value = LocationSheet.Cells[row3, code].Text;
-                                            }
-                                        }
+                                        outputWorksheet.Cells[row7, 56].Value=AscentLocations[PTLocation];
                                     }
                                 }
                                 #endregion
@@ -379,22 +392,10 @@ namespace ExcelAutomationService
                                 bgColor = cell.Style.Fill.BackgroundColor;
                                 if (!string.IsNullOrEmpty(bgColor.Rgb) && !bgColor.Rgb.Equals("FFFFFF"))
                                 {
-                                    outputWorksheet.Cells[row7, 56].Value = PTLocation;
-                                    using (var package2 = new ExcelPackage(new FileInfo(ascendcodes)))
+                                    outputWorksheet.Cells[row7, 52].Value = grd;
+                                    if (AscentGrades.ContainsKey(grd))
                                     {
-                                        int t = Service1.getSheetNumber(ascendcodes, "Grades");
-                                        var LocationSheet = package2.Workbook.Worksheets[t];
-                                        int LocationsLastRow = LocationSheet.Dimension.End.Row;
-                                        int description = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "description");
-                                        int code = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "code");
-
-                                        for (int row3 = 1; row3 <= LocationsLastRow; row3++)
-                                        {
-                                            if (LocationSheet.Cells[row3, description].Text.ToLower().Equals(inputWorkSheet.Cells[row, EmployeeGrade].Text.ToLower()))
-                                            {
-                                                outputWorksheet.Cells[row7, 52].Value = LocationSheet.Cells[row3, code].Text;
-                                            }
-                                        }
+                                        outputWorksheet.Cells[row7, 52].Value = AscentGrades[grd];
                                     }
                                 }
                                 #endregion
@@ -516,6 +517,12 @@ namespace ExcelAutomationService
                             string sheetname = testworksheet.Cells[1, 2].GetCellValue<string>();
                             if (sheetname.ToLower().Contains("date of joining"))
                             {
+                                Dictionary<string, string> doj = new Dictionary<string, string>();
+                                for (int row8 = 1; row8 <= rows; row8++) 
+                                {
+                                    doj.Add(testworksheet.Cells[row8,1].Text,testworksheet.Cells[row8, 2].Text);
+                                }
+                                
                                 for (int row8 = 1; row8 <= rows; row8++)
                                 {
                                     htmlTable.Append("<tr>");
@@ -530,14 +537,26 @@ namespace ExcelAutomationService
                                     htmlTable.Append("</tr>");
                                 }
                                 htmlTable.Append("</table>");
-                                string subject = Service1.CapitalizeEachWord(Service1.ClientName)+": Automation Alert: DOJ change request";
+                                string subject = Service1.CapitalizeEachWord(Service1.ClientName)+": Automation Alert";
                                 //string table = Service1.ReadExcelAsHtml(outputPackage, sheetname);
-                                string body = "Date Of Joining change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Please take necessary actions.<br><br>Regards,<br>Automation Team";
-                                Service1.SendEmails(Service1.recipients, subject, body);
+                                string body = "Date Of Joining change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                                if (Service1.subject == "")
+                                {
+                                    Service1.subject = subject;
+                                }
+                                Service1.body = Service1.body + body;
+                                //Service1.SendEmails(Service1.recipients, subject, body);
                                 Service1.PathLog("Date Of Joining change is reuested");
+                                QuerySheet.DojQuery(destinationFolder, doj);
                             }
                             if (sheetname.ToLower().Contains("birth"))
                             {
+                                Dictionary<string, string> dobc = new Dictionary<string, string>();
+                                for (int row8 = 1; row8 <= rows; row8++)
+                                {
+                                    dobc.Add(testworksheet.Cells[row8, 1].Text, testworksheet.Cells[row8, 2].Text);
+                                }
+                                
                                 for (int row8 = 1; row8 <= rows; row8++)
                                 {
                                     htmlTable.Append("<tr>");
@@ -552,13 +571,25 @@ namespace ExcelAutomationService
                                     htmlTable.Append("</tr>");
                                 }
                                 htmlTable.Append("</table>");
-                                string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert: DOB change request";
-                                string body = "Date Of Birth change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Please take necessary actions.<br><br>Regards,<br>Automation Team";
-                                Service1.SendEmails(Service1.recipients, subject, body);
+                                string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                                string body = "Date Of Birth change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                                if (Service1.subject == "")
+                                {
+                                    Service1.subject = subject;
+                                }
+                                Service1.body = Service1.body + body;
+                                //Service1.SendEmails(Service1.recipients, subject, body);
                                 Service1.PathLog("Date Of Birth change is reuested");
+                                QuerySheet.DobQuery(destinationFolder, dobc);
                             }
                             if (sheetname.ToLower().Contains("gender"))
                             {
+                                Dictionary<string, string> gc = new Dictionary<string, string>();
+                                for (int row8 = 1; row8 <= rows; row8++)
+                                {
+                                    gc.Add(testworksheet.Cells[row8, 1].Text, testworksheet.Cells[row8, 2].Text);
+                                }
+                                
                                 for (int row8 = 1; row8 <= rows; row8++)
                                 {
                                     htmlTable.Append("<tr>");
@@ -574,12 +605,24 @@ namespace ExcelAutomationService
                                 }
                                 htmlTable.Append("</table>");
                                 string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert: Gender change request";
-                                string body = "Gender change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Please take necessary actions.<br><br>Regards,<br>Automation Team";
-                                Service1.SendEmails(Service1.recipients, subject, body);
+                                string body = "Gender change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                                if (Service1.subject == "")
+                                {
+                                    Service1.subject = subject;
+                                }
+                                Service1.body = Service1.body + body;
+                                //Service1.SendEmails(Service1.recipients, subject, body);
                                 Service1.PathLog("Gender change is reuested");
+                                QuerySheet.GenderChangeQuery(destinationFolder, gc);
                             }
                             if (sheetname.ToLower().Contains("nationality"))
                             {
+                                Dictionary<string, string> nc = new Dictionary<string, string>();
+                                for (int row8 = 1; row8 <= rows; row8++)
+                                {
+                                    nc.Add(testworksheet.Cells[row8, 1].Text, testworksheet.Cells[row8, 2].Text);
+                                }
+                                
                                 for (int row8 = 1; row8 <= rows; row8++)
                                 {
                                     htmlTable.Append("<tr>");
@@ -595,9 +638,15 @@ namespace ExcelAutomationService
                                 }
                                 htmlTable.Append("</table>");
                                 string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert: Nationality change request";
-                                string body = "Nationality change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Please take necessary actions.<br><br>Regards,<br>Automation Team";
-                                Service1.SendEmails(Service1.recipients, subject, body);
+                                string body = "Nationality change is requested in the client input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                                if (Service1.subject == "")
+                                {
+                                    Service1.subject = subject;
+                                }
+                                Service1.body = Service1.body + body;
+                                //Service1.SendEmails(Service1.recipients, subject, body);
                                 Service1.PathLog("Nationality change is reuested");
+                                QuerySheet.ExistingNationalityQuery(destinationFolder, nc);
                             }
                         }
                         string newFileName = Path.Combine(destinationFolder,Service1.FileCount+ "]Existing_Changes_Master" + Path.GetFileName(filePath));
@@ -609,7 +658,7 @@ namespace ExcelAutomationService
                             outputPackage.SaveAs(newFileInfo);
                             outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
                             Service1.FileCount++;
-                            //Service1.Log("Existing_Changes_Master Excel file created successfully!");
+                            Service1.Log("Existing_Changes_Master Excel file created successfully!");
                         }
                         else
                         {

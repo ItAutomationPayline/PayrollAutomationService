@@ -53,13 +53,13 @@ namespace ExcelAutomationService
                         {
                             outputPackage.SaveAs(newFileInfo);
                             outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
+                            Service1.Log("Leaver Master Created Successfully");
                             Service1.FileCount++;
                         }
                         else
                         {
-                            Service1.PathLog("Leaver file not created");
+                            Service1.PathLog("No Leavers found.");
                         }
-                        //Service1.Log("Leaver_Master Excel file created successfully!");
                     }
                 }
             }

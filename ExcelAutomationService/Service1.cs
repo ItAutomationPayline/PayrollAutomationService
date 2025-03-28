@@ -14,6 +14,8 @@ using System.Timers;
 using Microsoft.Office.Interop.Excel;
 using OfficeOpenXml;
 using Timer = System.Timers.Timer;
+using OfficeOpenXml.Utils;
+using System.Runtime.InteropServices;
 
 namespace ExcelAutomationService
 {
@@ -23,6 +25,7 @@ namespace ExcelAutomationService
         public static string archived = @"E:/PAYROLL_SERVER/Automation/Archived";
         public static int ErrorCount = 0;
         public static int FileCount = 1;
+        public static string[] CtcClients;
         public static string[] recipients = { "dayaghan.limaye@paylineindia.com", "dhanashree.athavale@paylineindia.com", "tushar.chaudhari@paylineindia.com", "office12@yaminipanchwagh.com" };
        // public static string[] recipients = { "dayaghan.limaye@paylineindia.com"};
         public static string ClientName ="";
@@ -31,11 +34,84 @@ namespace ExcelAutomationService
         public static string destination = @"E:/PAYROLL_SERVER/Automation/output";
         string destinationFolder = @"E:/PAYROLL_SERVER/Automation/output";
         string ascendcodes = "E:/PAYROLL_SERVER/Automation/Twilio_Twilio Technology/Automation_Ascent_Codes/Ascent Codes.xlsx";
-       
+        public static string subject = "";
+        public static string body = "";
+
         public Service1()
         {
             InitializeComponent();
         }
+
+        #region CTC file opening
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr WTSGetActiveConsoleSessionId();
+
+        [DllImport("wtsapi32.dll", SetLastError = true)]
+        private static extern bool WTSQueryUserToken(IntPtr SessionId, out IntPtr TokenHandle);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool CreateProcessAsUser(
+            IntPtr hToken, string lpApplicationName, string lpCommandLine,
+            IntPtr lpProcessAttributes, IntPtr lpThreadAttributes,
+            bool bInheritHandles, uint dwCreationFlags,
+            IntPtr lpEnvironment, string lpCurrentDirectory,
+            ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
+
+        private struct STARTUPINFO
+        {
+            public int cb;
+            public string lpReserved;
+            public string lpDesktop;
+            public string lpTitle;
+            public int dwX;
+            public int dwY;
+            public int dwXSize;
+            public int dwYSize;
+            public int dwXCountChars;
+            public int dwYCountChars;
+            public int dwFillAttribute;
+            public int dwFlags;
+            public short wShowWindow;
+            public short cbReserved2;
+            public IntPtr lpReserved2;
+            public IntPtr hStdInput;
+            public IntPtr hStdOutput;
+            public IntPtr hStdError;
+        }
+
+        private struct PROCESS_INFORMATION
+        {
+            public IntPtr hProcess;
+            public IntPtr hThread;
+            public int dwProcessId;
+            public int dwThreadId;
+        }
+
+        public static void StartProcessAsUser(string applicationPath)
+        {
+            IntPtr tokenHandle;
+            IntPtr sessionId = WTSGetActiveConsoleSessionId();
+
+            if (WTSQueryUserToken(sessionId, out tokenHandle))
+            {
+                STARTUPINFO startupInfo = new STARTUPINFO
+                {
+                    cb = Marshal.SizeOf(typeof(STARTUPINFO)),
+                    lpDesktop = "winsta0\\default" // This allows UI interaction
+                };
+
+                PROCESS_INFORMATION procInfo;
+                bool result = CreateProcessAsUser(tokenHandle, applicationPath, null,
+                    IntPtr.Zero, IntPtr.Zero, false, 0, IntPtr.Zero, null,
+                    ref startupInfo, out procInfo);
+
+                if (!result)
+                {
+                    Console.WriteLine($"Error: {Marshal.GetLastWin32Error()}");
+                }
+            }
+        }
+        #endregion
         public static void SendEmails(string[] emailAddresses, string subject, string body)
         {
             try
@@ -50,20 +126,34 @@ namespace ExcelAutomationService
                 {
                     smtpClient.Credentials = new NetworkCredential(smtpUser, smtpPass);
                     smtpClient.EnableSsl = true; // Enable SSL/TLS for security
-
                     // Loop through the recipient emails
                     foreach (string recipientEmail in emailAddresses)
                     {
                         using (MailMessage mail = new MailMessage())
                         {
-                            mail.From = new MailAddress(smtpUser); // Sender's email address
-                            mail.To.Add(recipientEmail); // Add recipient email
-                            mail.Subject = subject; // Email subject
-                            mail.Body = body; // Email body
-                            mail.IsBodyHtml = true; // Set to true if the body contains HTML content
-                            // Send the email
-                            smtpClient.Send(mail);
-                            Console.WriteLine($"Email sent to: {recipientEmail}");
+                            try
+                            {
+                                mail.From = new MailAddress(smtpUser); // Sender's email address
+                                mail.To.Add(recipientEmail); // Add recipient email
+                                mail.Subject = subject; // Email subject
+                                mail.Body = body; // Email body
+                                mail.IsBodyHtml = true; // Set to true if the body contains HTML content                        
+                                smtpClient.Send(mail); // Send the email
+                                Console.WriteLine($"Email sent to: {recipientEmail}");
+                            }
+                            catch (SmtpFailedRecipientException ex)
+                            {
+                                PathLog($"❌ Failed to deliver email to {ex.FailedRecipient}: {ex.Message}");
+                                PathLog("Kindly inform managers that email alert was not sent successfully!!!");
+                            }
+                            catch (Exception ex)
+                            {
+                                Log($"Error sending emails: {ex.Message}");
+                                PathLog($"Error sending emails: {ex.Message}");
+                                PathLog($"❌ Failed to deliver email to "+recipientEmail+" Subject:"+ subject);
+                                PathLog("Kindly inform managers that email alert was not sent successfully!!!");
+                                // Return false if any email fails to send
+                            }
                         }
                     }
                 }
@@ -71,14 +161,17 @@ namespace ExcelAutomationService
             catch (FormatException ex)
             {
                PathLog($"🚨 Invalid Email Format: {ex.Message}");
+               PathLog("Kindly inform managers that email alert was not sent successfully!!!");
             }
             catch (SmtpFailedRecipientException ex)
             {
                 PathLog($"❌ Failed to deliver email to {ex.FailedRecipient}: {ex.Message}");
+                PathLog("Kindly inform managers that email alert was not sent successfully!!!");
             }
             catch (SmtpException ex)
             {
                 PathLog($"❌ SMTP Error: {ex.Message}");
+                PathLog("Kindly inform managers that email alert was not sent successfully!!!");
             }
             catch (Exception ex)
             {
@@ -94,14 +187,13 @@ namespace ExcelAutomationService
             {
                 return input; // Return the input as is if it's null, empty, or whitespace
             }
-
             // Split the string into words, capitalize each word, and join them back
             return string.Join(" ", input
                 .Split(' ') // Split the string by spaces
                 .Where(word => !string.IsNullOrWhiteSpace(word)) // Ignore extra spaces
                 .Select(word => char.ToUpper(word[0]) + word.Substring(1).ToLower())); // Capitalize each word
         }
-        //Method to get position of column
+        
         public static int getColumnNumber(string filepath, string worksheetname, string columnname)
         {
             try
@@ -138,7 +230,7 @@ namespace ExcelAutomationService
                 throw;
             }
         }
-        //Method to get position of Sheet
+        
         public static int getSheetNumber(string filepath, string worksheetname)
         {
             try
@@ -171,7 +263,7 @@ namespace ExcelAutomationService
                 throw;
             }
         }
-        //Method to Validate Aadhaar
+        
         public static string ValidateAadhar(string sheetname, string hrid, string adhaar)
         {
             adhaar = adhaar.Replace(" ", "");
@@ -188,7 +280,7 @@ namespace ExcelAutomationService
                 return "";
             }
         }
-        //Method to Validate PAN
+        
         public static string ValidatePAN(string sheetname, string hrid, string pan)
         {
             pan = pan.Replace(" ", "");
@@ -209,7 +301,7 @@ namespace ExcelAutomationService
         {
             return date;
         }
-        //Method to Validate IFSC
+        
         public static string ValidateIFSC(string sheetname, string hrid, string ifsc)
         {
             ifsc = ifsc.Replace(" ", "");
@@ -352,11 +444,22 @@ namespace ExcelAutomationService
                 recipients= new string[] { "dayaghan.limaye@paylineindia.com", "dhanashree.athavale@paylineindia.com", "tushar.chaudhari@paylineindia.com", "office12@yaminipanchwagh.com"};
             }
         }
+        public static void GetPlateCtcClients()
+        {
+            string Alerts = @"E:\PAYROLL_SERVER\Automation\Config\CTC_Breakup_By_Client.txt";
+            if (File.Exists(Alerts))
+            {
+                CtcClients = File.ReadAllLines(Alerts);
+            }
+        }
         public static async Task ProcessFile(string ascendcodes, string filePath, string destinationFolder)
         {
             try
             {
+                subject = "";
+                body = "";
                 GetAlertmails();
+                GetPlateCtcClients();
                 DateTime now = DateTime.Now;
                 // Format the month and year as "Month_Year"
                 string formattedDate = $"{now:dd_MMMM_yyyy}";
@@ -365,8 +468,8 @@ namespace ExcelAutomationService
                 string filename = Path.GetFileName(filePath.ToLower());
                 string[] directories = Directory.GetDirectories(destinationFolder);
 
-                // Extract only the folder names
-                //method to find right folder
+                
+                //method to find right destinationfolder
                 string[] folderNames = Array.ConvertAll(directories, dir => Path.GetFileName(dir.ToLower()));
                 foreach (string folderName in folderNames)
                 {
@@ -431,54 +534,90 @@ namespace ExcelAutomationService
                         await Task.Delay(500); // Wait and retry if file is still being written
                     }
                 }
+
                 // Call the relevant methods to process the file
-                await Task.Run(() => New_Joinee_Master.NewJoinee_Master(ascendcodes, filePath, destinationFolder));
-                await Task.Run(() => Rehire_Master.rehire_Master(ascendcodes, filePath, destinationFolder));
+                New_Joinee_Master.NewJoinee_Master(ascendcodes, filePath, destinationFolder);
+                Rehire_Master.rehire_Master(ascendcodes, filePath, destinationFolder);
                 if (filePath.ToLower().Contains("synchronoss"))
                 {
-                    await Task.Run(() => Synchronoss_new_CTC.CTC_Master(ascendcodes, filePath, destinationFolder));
+                    Synchronoss_new_CTC.CTC_Master(ascendcodes, filePath, destinationFolder);
                 }
-                await Task.Run(() => Existing_Changes_Master.Existing_changes_Master(ascendcodes, filePath, destinationFolder));
-                await Task.Run(() => Benefeciaries_Data.Beneficiaries_Data(ascendcodes, filePath, destinationFolder));
-                await Task.Run(() => Variable.Variable_Pay_Inputs_Data(ascendcodes, filePath, destinationFolder));
-                await Task.Run(() => Leaver_Master.LeaverMaster(ascendcodes, filePath, destinationFolder));
-                await Task.Run(() => Joiner_Leaver_Master.JoinerLeaverMaster(ascendcodes, filePath, destinationFolder));
+                foreach (string t in CtcClients)
+                {
+                    if (Path.GetFileName(filePath).Contains(t))
+                    {
+                        //CtcByClientMaster.CtcByClient(ascendcodes, filePath, destinationFolder);
+                    }
+                }
+                Existing_Changes_Master.Existing_changes_Master(ascendcodes, filePath, destinationFolder);
+                Benefeciaries_Data.Beneficiaries_Data(ascendcodes, filePath, destinationFolder);
+                Variable.Variable_Pay_Inputs_Data(ascendcodes, filePath, destinationFolder);
+                Leaver_Master.LeaverMaster(ascendcodes, filePath, destinationFolder);
+                //await Task.Run(() => Joiner_Leaver_Master.JoinerLeaverMaster(ascendcodes, filePath, destinationFolder));
                 //await Task.Run(() => CTC_new_joiner.CTC_Master(ascendcodes, filePath, destinationFolder));
-
+                if (subject != "")
+                {
+                    //SendEmails(recipients, subject,body+ "Please take necessary actions.<br><br> Regards,<br> Automation Team");
+                }
                 //action after processing
                 FileCount = 1;//Setting Back File Count to 1 for new file!!!
-                if (!Directory.Exists(archived))
+                using (var package = new ExcelPackage(new FileInfo(ascendcodes)))
                 {
-                    Directory.CreateDirectory(archived);
-                }
-                if (!Directory.Exists(errors))
-                {
-                    Directory.CreateDirectory(errors);
-                }
-                if (File.Exists(filePath))
-                {
-                    if (ErrorCount == 0)
+                    int n = getSheetNumber(ascendcodes, "P.F. Registration Code");
+                    var PfSheet = package.Workbook.Worksheets[n];
+                    string pp = PfSheet.Cells[2, 3].GetValue<string>();
+                    if (ShrinkString(pp) != "")
                     {
-                        if (File.Exists(archived+"/"+Path.GetFileName(filePath))) { 
-                            File.Delete(filePath); 
-                        }
-                        else { 
-                        File.Move(filePath, Path.Combine(archived, Path.GetFileName(filePath)));
-                        }
-                    }
-                    else
-                    {
-                        if (File.Exists(errors + "/" + Path.GetFileName(filePath))) {
-                            File.Delete(filePath); 
-                        }
-                        else
+                        try
                         {
-                            File.Move(filePath, Path.Combine(errors, Path.GetFileName(filePath)));
+                            StartProcessAsUser(@""+pp);
                         }
-                        ErrorCount = 0;
+                        catch (Exception ex)
+                        {
+                            Log($"Error opening file: {ex.Message}");
+                            File.Delete(filePath);
+                        }
+                    }
+                    else 
+                    {
+                        if (!Directory.Exists(archived))
+                        {
+                            Directory.CreateDirectory(archived);
+                        }
+                        if (!Directory.Exists(errors))
+                        {
+                            Directory.CreateDirectory(errors);
+                        }
+                        if (File.Exists(filePath))
+                        {
+                            if (ErrorCount == 0)
+                            {
+                                if (File.Exists(archived + "/" + Path.GetFileName(filePath)))
+                                {
+                                    File.Delete(filePath);
+                                }
+                                else
+                                {
+                                    File.Move(filePath, Path.Combine(archived, Path.GetFileName(filePath)));
+                                }
+                            }
+                            else
+                            {
+                                if (File.Exists(errors + "/" + Path.GetFileName(filePath)))
+                                {
+                                    File.Delete(filePath);
+                                }
+                                else
+                                {
+                                    File.Move(filePath, Path.Combine(errors, Path.GetFileName(filePath)));
+                                }
+                                ErrorCount = 0;
+                            }
+                        }
+                        Log($"Processed file: {Path.GetFileName(filePath)}\n\n");
                     }
                 }
-                Log($"Processed file: {Path.GetFileName(filePath)}");
+                
             }
             catch (Exception ex)
             {

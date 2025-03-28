@@ -97,11 +97,11 @@ namespace ExcelAutomationService
                                     //Service1.SendEmails(Service1.recipients, subject, body);
                                 }
                             }
-                            
                             rowIndex++;
                         }
                         if (CautionId.Count != 0)
                         {
+                            
                             StringBuilder htmlTable = new StringBuilder();
                             htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
                             // Add table headers
@@ -120,9 +120,15 @@ namespace ExcelAutomationService
                                 htmlTable.Append("</tr>");
                             }
                             htmlTable.Append("</table>");
-                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert: Amount in Variable file";
-                            string body = "Kindly confirm the variable pay amounts for a new joinner in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Please take necessary actions.<br><br>Regards,<br>Automation Team";
-                            Service1.SendEmails(Service1.recipients, subject, body);
+                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                            string body = "Kindly confirm the variable pay amounts for a new joinner in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                            if (Service1.subject == "")
+                            {
+                                Service1.subject = subject;
+                            }
+                            Service1.body = Service1.body + body;
+                            //Service1.SendEmails(Service1.recipients, subject, body);
+                            //QuerySheet.VariableAmountQuery(destinationFolder, CautionId, CautionDesc, CautionAmt);
                         }
                         for (int column = 1; column <= payElementCodes.Count + 1; column++)
                         {
@@ -158,6 +164,7 @@ namespace ExcelAutomationService
                         {
                             outputPackage.SaveAs(newFileInfo);
                             outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
+                            Service1.Log("Variable Created Successfully");
                             Service1.FileCount++;
                         }
                         else

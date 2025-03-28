@@ -1,4 +1,6 @@
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\ExcelAutomationService.exe.config
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\ExcelAutomationService.exe.manifest
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\ExcelAutomationService.application
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\ExcelAutomationService.exe
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\ExcelAutomationService.pdb
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\EPPlus.dll
@@ -82,10 +84,8 @@ D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationServic
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.ProjectInstaller.resources
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.csproj.GenerateResource.cache
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.csproj.CoreCompileInputs.cache
+D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.exe.manifest
+D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.application
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAut.F62FAD31.Up2Date
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.exe
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.pdb
-D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\ExcelAutomationService.exe.manifest
-D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\ExcelAutomationService.application
-D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.exe.manifest
-D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.application

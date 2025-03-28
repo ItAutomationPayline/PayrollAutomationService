@@ -189,6 +189,42 @@ namespace ExcelAutomationService
                         List<string> doj = new List<string>();
                         List<string> nm = new List<string>();
                         List<string> UACN = new List<string>();
+                        Dictionary<string, string> AscentLocations = new Dictionary<string, string>();
+                        Dictionary<string, string> AscentGrades = new Dictionary<string, string>();
+                        Dictionary<string, string> AscentBanksDetailed = new Dictionary<string, string>();
+                        using (var package2 = new ExcelPackage(new FileInfo(ascendcodes)))
+                        {
+                            var LocationSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Locations")];
+                            int LocationsLastRow = LocationSheet.Dimension.End.Row;
+                            int description = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "description");
+                            int code = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= LocationsLastRow; row3++)
+                            {
+                                if (!AscentLocations.ContainsKey(Service1.ShrinkString(LocationSheet.Cells[row3, description].Text)))
+                                    AscentLocations.Add(Service1.ShrinkString(LocationSheet.Cells[row3, description].Text), LocationSheet.Cells[row3, code].Text);
+                            }
+                            var GradeSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Grades")];
+                            int GradeLastRow = GradeSheet.Dimension.End.Row;
+                            description = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "description");
+                            code = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= GradeLastRow; row3++)
+                            {
+                                if (!AscentGrades.ContainsKey(GradeSheet.Cells[row3, description].Text))
+                                    AscentGrades.Add(GradeSheet.Cells[row3, description].Text, GradeSheet.Cells[row3, code].Text);
+                            }
+                            var BankSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Banks Detailed")];
+                            int BankLastRow = BankSheet.Dimension.End.Row;
+                            description = Service1.getColumnNumber(ascendcodes, BankSheet.ToString(), "Name of Bank");
+                            code = Service1.getColumnNumber(ascendcodes, BankSheet.ToString(), "code");
+
+                            for (int row3 = 2; row3 <= BankLastRow; row3++)
+                            {
+                                if (!AscentBanksDetailed.ContainsKey(BankSheet.Cells[row3, description].Text))
+                                    AscentBanksDetailed.Add(BankSheet.Cells[row3, description].Text, BankSheet.Cells[row3, code].Text);
+                            }
+                        }
                         int row7 = 2;
                         for (row = 2; row <= lastRow; row++)
                         {
@@ -439,21 +475,18 @@ namespace ExcelAutomationService
                                                     outputWorksheet.Cells[row7, 28].Value = Ascendsheet.Cells[row5, 1].GetValue<string>();
                                                 }
                                             }
-                                            for (int row3 = 1; row3 <= LocationsLastRow; row3++)
+                                            string loc = outputWorksheet.Cells[row7, 56].Text;
+                                            loc = loc.Replace("Remote - IND -", "");
+                                            loc = Service1.ShrinkString(loc);
+                                            if (AscentLocations.ContainsKey(loc))
                                             {
-                                                if (LocationSheet.Cells[row3, description].Text.ToLower().Equals(outputWorksheet.Cells[row7, 56].Text.ToLower()))
-                                                {
-                                                    outputWorksheet.Cells[row7, 56].Value = LocationSheet.Cells[row3, code].Text;
-                                                }
+                                                outputWorksheet.Cells[row7, 56].Value = AscentLocations[loc];
                                             }
-                                            description = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "description");
-                                            code = Service1.getColumnNumber(ascendcodes, GradeSheet.ToString(), "code");
-                                            for (int row3 = 1; row3 <= GradeLastRow; row3++)
+                                            string grd = inputWorkSheet.Cells[row, EmployeeGrade].Text;
+
+                                            if (AscentGrades.ContainsKey(grd))
                                             {
-                                                if ((GradeSheet.Cells[row3, description].Text.ToLower().Equals(inputWorkSheet.Cells[row, EmployeeGrade].Text.ToLower())) && (inputWorkSheet.Cells[row, EmployeeGrade].Text.ToLower() != "") && (GradeSheet.Cells[row3, description].Text.ToLower() != ""))
-                                                {
-                                                    outputWorksheet.Cells[row7, 52].Value = GradeSheet.Cells[row3, code].Text;
-                                                }
+                                                outputWorksheet.Cells[row7, 52].Value = AscentGrades[grd];
                                             }
                                         }
                                     }
@@ -485,9 +518,15 @@ namespace ExcelAutomationService
                                 htmlTable.Append("</tr>");
                             }
                             htmlTable.Append("</table>");
-                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert: Rehire cases";
-                            string body = "Rehire cases are found in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Please take necessary actions.<br><br>Regards,<br>Automation Team";
-                            Service1.SendEmails(Service1.recipients, subject, body);
+                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                            string body = "Rehire cases are found in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                            if (Service1.subject == "")
+                            {
+                                Service1.subject = subject;
+                            }
+                            Service1.body = Service1.body + body;
+                            //Service1.SendEmails(Service1.recipients, subject, body);
+                            QuerySheet.RehireCasesQuery(destinationFolder, CautionId, evtype, doj, nm, UACN);
                         }
                         string newFileName = Path.Combine(destinationFolder, Service1.FileCount + "]Rehire_Master" + Path.GetFileName(filePath));
                         FileInfo newFileInfo = new FileInfo(newFileName);
@@ -498,6 +537,7 @@ namespace ExcelAutomationService
                         {
                             outputPackage.SaveAs(newFileInfo);
                             outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
+                            Service1.Log("RehireMaster Created Successfully");
                             Service1.FileCount++;
                         }
                         else
