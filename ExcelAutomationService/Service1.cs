@@ -427,6 +427,7 @@ namespace ExcelAutomationService
             {
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.CreationTime
             };
+           
             watcher.Created += async (sender, e) => await ProcessFile(ascendcodes, e.FullPath, destinationFolder);
             watcher.EnableRaisingEvents = true;
             
@@ -534,7 +535,7 @@ namespace ExcelAutomationService
                         await Task.Delay(500); // Wait and retry if file is still being written
                     }
                 }
-
+                Log("File detected:"+ Path.GetFileName(filePath));
                 // Call the relevant methods to process the file
                 New_Joinee_Master.NewJoinee_Master(ascendcodes, filePath, destinationFolder);
                 Rehire_Master.rehire_Master(ascendcodes, filePath, destinationFolder);
@@ -557,7 +558,7 @@ namespace ExcelAutomationService
                 //await Task.Run(() => CTC_new_joiner.CTC_Master(ascendcodes, filePath, destinationFolder));
                 if (subject != "")
                 {
-                    //SendEmails(recipients, subject,body+ "Please take necessary actions.<br><br> Regards,<br> Automation Team");
+                    SendEmails(recipients, subject,body+ "Please take necessary actions.<br><br> Regards,<br> Automation Team");
                 }
                 //action after processing
                 FileCount = 1;//Setting Back File Count to 1 for new file!!!

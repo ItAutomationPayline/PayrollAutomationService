@@ -35,6 +35,32 @@ namespace ExcelAutomationService
                         int benefeciaryname = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Beneficiary Name");
                         int acno = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "account number");
                         int ifsc = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "sort code");
+                        
+                        Dictionary<string, string> AscentBanksDetailed = new Dictionary<string, string>();
+                        using (var package2 = new ExcelPackage(new FileInfo(ascendcodes)))
+                        {
+                            var BankSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Banks Detailed")];
+                            int BankLastRow = BankSheet.Dimension.End.Row;
+                            int description = Service1.getColumnNumber(ascendcodes, BankSheet.ToString(), "Name of Bank");
+                            int code = Service1.getColumnNumber(ascendcodes, BankSheet.ToString(), "code");
+
+                            for (int row2 = 2; row2 <= BankLastRow; row2++)
+                            {
+                                string bankname = BankSheet.Cells[row2, description].Text;
+                                bankname = Service1.ShrinkString(bankname);
+                                bankname = bankname.Replace("ltd", "");
+                                bankname = bankname.Replace("limited", "");
+                                bankname = bankname.Replace("pvt", "");
+                                bankname = bankname.Replace(".", "");
+                                bool containsBank = bankname.Contains("bank");
+                                if (!containsBank)
+                                {
+                                    bankname = bankname + "bank";
+                                }
+                                if (!AscentBanksDetailed.ContainsKey(bankname))
+                                    AscentBanksDetailed.Add(bankname, BankSheet.Cells[row2, code].Text);
+                            }
+                        }
                         int row3 = 2;
                         for (int row = 2; row <= lastRow; row++)
                         {
@@ -56,7 +82,7 @@ namespace ExcelAutomationService
                             Regex validCharsRegex = new Regex("[^a-zA-Z ]");
                             BENEFICIARYNAME = validCharsRegex.Replace(BENEFICIARYNAME, "");
                             if (BENEFICIARYNAME == "") {
-                                Service1.Log(HRID+" comment:hrid's benefeciary name is not available.");
+                                Service1.PathLog(HRID+" comment:hrid's benefeciary name is not available.");
                             }
                             outputWorksheet.Cells[row3, 2].Value = BENEFICIARYNAME;
                             if ((PrimaryBankAcNO.All(char.IsDigit)))
@@ -96,22 +122,26 @@ namespace ExcelAutomationService
                                 {
                                     bankname = bankname + "bank";
                                 }
-                                int row2 = 2;
-                                for (; row2 <= lastRow2; row2++)
+                                if (AscentBanksDetailed.ContainsKey(bankname))
                                 {
-                                    string temp = Ascendsheet.Cells[row2, bankname2].GetValue<string>();
-                                    temp = Service1.ShrinkString(temp);
-                                    containsBank = temp.Contains("bank");
-                                    if (!containsBank)
-                                    {
-                                        temp = temp + "bank";
-                                    }
-                                    if (temp.Equals(bankname))
-                                    {
-                                        outputWorksheet.Cells[row, 5].Value = Ascendsheet.Cells[row2, bankcode].GetValue<string>();
-
-                                    }
+                                    outputWorksheet.Cells[row, 5].Value = AscentBanksDetailed[bankname];
                                 }
+                                //int row2 = 2;
+                                //for (; row2 <= lastRow2; row2++)
+                                //{
+                                //    string temp = Ascendsheet.Cells[row2, bankname2].GetValue<string>();
+                                //    temp = Service1.ShrinkString(temp);
+                                //    containsBank = temp.Contains("bank");
+                                //    if (!containsBank)
+                                //    {
+                                //        temp = temp + "bank";
+                                //    }
+                                //    if (temp.Equals(bankname))
+                                //    {
+                                //        outputWorksheet.Cells[row, 5].Value = Ascendsheet.Cells[row2, bankcode].GetValue<string>();
+
+                                //    }
+                                //}
                             }
                             outputWorksheet.DeleteColumn(6);
                         }

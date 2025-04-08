@@ -191,7 +191,7 @@ namespace ExcelAutomationService
 
                             for (int row3 = 2; row3 <= LocationsLastRow; row3++)
                             {
-                                if (!AscentLocations.ContainsKey(LocationSheet.Cells[row3, description].Text))
+                                if (!AscentLocations.ContainsKey(LocationSheet.Cells[row3, description].Text) && LocationSheet.Cells[row3, description].Text != "")
                                     AscentLocations.Add(LocationSheet.Cells[row3,description].Text, LocationSheet.Cells[row3, code].Text);
                             }
                             var GradeSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Grades")];
@@ -201,7 +201,7 @@ namespace ExcelAutomationService
 
                             for (int row3 = 2; row3 <= GradeLastRow; row3++)
                             {
-                                if (!AscentGrades.ContainsKey(GradeSheet.Cells[row3, description].Text))
+                                if (!AscentGrades.ContainsKey(GradeSheet.Cells[row3, description].Text) && GradeSheet.Cells[row3, description].Text != "")
                                     AscentGrades.Add(GradeSheet.Cells[row3, description].Text, GradeSheet.Cells[row3, code].Text);
                             }
                         }
@@ -414,6 +414,7 @@ namespace ExcelAutomationService
                                             grade = grade.Substring(grade.Length - 2);
                                         }
                                     outputWorksheet.Cells[row7, 83].Value = grade;
+                                    outputWorksheet.Cells[row7, 52].Value = "";
                                     }
                                 }
                                 #endregion
