@@ -32,6 +32,7 @@ namespace ExcelAutomationService
         Timer timer = new Timer();
         string sourceFolder = @"E:\PAYROLL_SERVER\Automation\Input";     // Folder to watch for Excel files
         public static string destination = @"E:/PAYROLL_SERVER/Automation/output";
+        public static string ctcfolder = @"E:/PAYROLL_SERVER/Automation/output";
         string destinationFolder = @"E:/PAYROLL_SERVER/Automation/output";
         string ascendcodes = "E:/PAYROLL_SERVER/Automation/Twilio_Twilio Technology/Automation_Ascent_Codes/Ascent Codes.xlsx";
         public static string subject = "";
@@ -220,6 +221,7 @@ namespace ExcelAutomationService
                         PathLog(columnname + " column was not found in " + worksheetname + " of " + filepath + " file.");
                         ErrorCount++;
                     }
+                    col = 999;
                     return col;
                 }
             }
@@ -428,6 +430,7 @@ namespace ExcelAutomationService
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.CreationTime
             };
            
+
             watcher.Created += async (sender, e) => await ProcessFile(ascendcodes, e.FullPath, destinationFolder);
             watcher.EnableRaisingEvents = true;
             
@@ -460,16 +463,13 @@ namespace ExcelAutomationService
                 subject = "";
                 body = "";
                 GetAlertmails();
-                GetPlateCtcClients();
                 DateTime now = DateTime.Now;
                 // Format the month and year as "Month_Year"
-                string formattedDate = $"{now:dd_MMMM_yyyy}";
+                string formattedDate = $"{now:yyyyMMdd}";
                 string foldername = Path.GetFileName(filePath);
                 foldername = foldername.Replace(".xlsx", "");
                 string filename = Path.GetFileName(filePath.ToLower());
                 string[] directories = Directory.GetDirectories(destinationFolder);
-
-                
                 //method to find right destinationfolder
                 string[] folderNames = Array.ConvertAll(directories, dir => Path.GetFileName(dir.ToLower()));
                 foreach (string folderName in folderNames)
@@ -482,7 +482,8 @@ namespace ExcelAutomationService
                             destinationFolder = destinationFolder + "/" + folderName;
                             string[] referencefile=Directory.GetFiles((destinationFolder), "*.xlsx");
                             ascendcodes = destinationFolder + "/" + Path.GetFileName(referencefile[0]);
-                            destinationFolder = destinationFolder + "/" + folderName + " " + formattedDate;
+                            ctcfolder = destinationFolder + "/CTC_Structure/";
+                            destinationFolder = destinationFolder + "/" + formattedDate + " " + folderName;
                             destination = destinationFolder;
                             Console.WriteLine(ascendcodes);
                             ClientName=folderName;
@@ -507,7 +508,8 @@ namespace ExcelAutomationService
                             destinationFolder = destinationFolder + "/" + folderName;
                             string[] referencefile = Directory.GetFiles((destinationFolder), "*.xlsx");
                             ascendcodes = destinationFolder + "/" + Path.GetFileName(referencefile[0]);
-                            destinationFolder = destinationFolder + "/" + folderName + " " + formattedDate;
+                            ctcfolder = destinationFolder + "/CTC_Structure/";
+                            destinationFolder = destinationFolder + "/" + formattedDate + " " + folderName;
                             destination = destinationFolder;
                             Console.WriteLine(ascendcodes);
                             ClientName = folderName;
@@ -543,22 +545,23 @@ namespace ExcelAutomationService
                 {
                     Synchronoss_new_CTC.CTC_Master(ascendcodes, filePath, destinationFolder);
                 }
-                foreach (string t in CtcClients)
+                if (Directory.Exists(ctcfolder))
                 {
-                    if (Path.GetFileName(filePath).Contains(t))
-                    {
-                        //CtcByClientMaster.CtcByClient(ascendcodes, filePath, destinationFolder);
-                    }
+                    string[] referencefile = Directory.GetFiles((ctcfolder), "*.xlsx");
+                    string ctccodes = ctcfolder + Path.GetFileName(referencefile[0]);
+                    //string copypath = @"E:\PAYROLL_SERVER\Automation\Config\" +"1"+ "temp.xlsx";
+                    MasterCTC.CTC_Master(ctccodes, filePath, destinationFolder);
                 }
                 Existing_Changes_Master.Existing_changes_Master(ascendcodes, filePath, destinationFolder);
                 Benefeciaries_Data.Beneficiaries_Data(ascendcodes, filePath, destinationFolder);
                 Variable.Variable_Pay_Inputs_Data(ascendcodes, filePath, destinationFolder);
                 Leaver_Master.LeaverMaster(ascendcodes, filePath, destinationFolder);
+               
                 //await Task.Run(() => Joiner_Leaver_Master.JoinerLeaverMaster(ascendcodes, filePath, destinationFolder));
                 //await Task.Run(() => CTC_new_joiner.CTC_Master(ascendcodes, filePath, destinationFolder));
                 if (subject != "")
                 {
-                    SendEmails(recipients, subject,body+ "Please take necessary actions.<br><br> Regards,<br> Automation Team");
+                    //SendEmails(recipients, subject,body+ "Please take necessary actions.<br><br> Regards,<br> Automation Team");
                 }
                 //action after processing
                 FileCount = 1;//Setting Back File Count to 1 for new file!!!
@@ -615,6 +618,7 @@ namespace ExcelAutomationService
                                 ErrorCount = 0;
                             }
                         }
+                        //File.Delete(destPath);
                         Log($"Processed file: {Path.GetFileName(filePath)}\n\n");
                     }
                 }

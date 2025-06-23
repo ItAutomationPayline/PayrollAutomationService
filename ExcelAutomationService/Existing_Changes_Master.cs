@@ -26,6 +26,7 @@ namespace ExcelAutomationService
                     var inputWorkSheet = package.Workbook.Worksheets[IP];
                     IP = Service1.getSheetNumber(filePath, "Beneficiaries Data");
                     var BenefeciariesDataSheet = package.Workbook.Worksheets[IP];
+                    int ManagerTier = 200;
                     //var OrgAssignmentsDataSheet = package.Workbook.Worksheets["Org Assignments"];
                     //int OrgAssignmentsDataSheetLastRow = OrgAssignmentsDataSheet.Dimension.End.Row;
                     int employeenumber = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "HR ID");
@@ -148,6 +149,11 @@ namespace ExcelAutomationService
                         }
                         outputWorksheet.Cells[1, 84].Value = "Userdefined 2 Code";
                         outputWorksheet.Cells[1, 85].Value = "Note";
+                        if (filePath.ToLower().Contains("anthology") || filePath.ToLower().Contains("blackboard"))
+                        {
+                            outputWorksheet.Cells[1, 85].Value = "Manager Tier";
+                            ManagerTier = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Manager Tier");
+                        }
                         outputWorksheet.Cells[1, 86].Value = "Userdefined 4 Code";
                         outputWorksheet.Cells[1, 87].Value = "Userdefined 5 Code";
                         outputWorksheet.Cells[1, 88].Value = "Userdefined 6";
@@ -260,7 +266,13 @@ namespace ExcelAutomationService
                                    MaritalStatus=Service1.ValidateMaritalStatus(MaritalStatus);
                                    outputWorksheet.Cells[row7, 9].Value = MaritalStatus;
                                 }
-
+                                if (filePath.ToLower().Contains("anthology") || filePath.ToLower().Contains("blackboard"))
+                                {
+                                    if (Service1.ShrinkString(inputWorkSheet.Cells[row, ManagerTier].Text) != "")
+                                    {
+                                        outputWorksheet.Cells[row7, 85].Value = inputWorkSheet.Cells[row, ManagerTier].Text;
+                                    }
+                                }
                                 var UAN = inputWorkSheet.Cells[row, uan].Text;
 				                cell = inputWorkSheet.Cells[row, uan];
 				                bgColor = cell.Style.Fill.BackgroundColor;

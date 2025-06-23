@@ -24,19 +24,25 @@ namespace ExcelAutomationService
                     int lastRow = inputWorkSheet.Dimension.End.Row;
                     // Get column numbers for relevant headers
                     int hridCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "HR ID");
+                    int comment= Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Additional Comment");
                     int payElementCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Pay Element Short Code");
                     int amountCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Amount");
 
-                    // Data structures to store unique pay elements and employee data
+                    //Data structures to store unique pay elements and employee data
                     var employeeData = new Dictionary<string, Dictionary<string, double>>();
                     var payElementCodes = new HashSet<string>();
                     HashSet<string> NewHrid = new HashSet<string>();
-                    List<string> CautionId= new List<string>();
-                    List<string> CautionDesc= new List<string>();
-                    List<double> CautionAmt= new List<double>();
+                    List<string> CautionId = new List<string>();
+                    List<string> CautionDesc = new List<string>();
+                    List<double> CautionAmt = new List<double>();
+                    List<string> CautionId2 = new List<string>();
+                    List<string> CautionDesc2 = new List<string>();
+                    List<double> CautionAmt2 = new List<double>();
+                    List<string> CautionComment2 = new List<string>();
                     // Read data from input sheet
                     for (int row = 2; row <= lastRow; row++)
                     {
+                        
                         var cell = inputWorkSheet.Cells[row, hridCol];
                         // Get the background color of the cell
                         var bgColor = cell.Style.Fill.BackgroundColor;
@@ -60,6 +66,13 @@ namespace ExcelAutomationService
                             employeeData[hrid][payElement] = 0;
                         }
                         employeeData[hrid][payElement] += amount;
+                        if (inputWorkSheet.Cells[row, comment].Text != "")
+                        {
+                            CautionId2.Add(hrid);
+                            CautionDesc2.Add(payElement);
+                            CautionAmt2.Add(amount);
+                            CautionComment2.Add(inputWorkSheet.Cells[row, comment].Text);
+                        }
                     }
                     // Write the output file
                     using (var outputPackage = new ExcelPackage())
@@ -86,6 +99,7 @@ namespace ExcelAutomationService
                                 string payElement = payElementList[i];
                                 double amount = kvp.Value.ContainsKey(payElement) ? kvp.Value[payElement] : 0;
                                 outputWorksheet.Cells[rowIndex, i + 2].Value = amount;
+                                
                                 if (amount >= 1500000.00 && NewHrid.Contains(hrid))
                                 {
                                     CautionId.Add(hrid);
@@ -99,9 +113,40 @@ namespace ExcelAutomationService
                             }
                             rowIndex++;
                         }
+                        if (CautionId2.Count!=0) 
+                        {
+                            StringBuilder htmlTable = new StringBuilder();
+                            htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
+                            // Add table headers
+                            htmlTable.Append("<tr>");
+                            htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>HRID</th>");
+                            htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>PayElement Code</th>");
+                            htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>Amount</th>");
+                            htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>Additional Comment</th>");
+                            htmlTable.Append("</tr>");
+                            Service1.PathLog("Below are the Additional comments of variable file:");
+                            // Add table rows
+                            for (int row8 = 0; row8 <= CautionId2.Count - 1; row8++)
+                            {
+                                Service1.PathLog("HRID:"+ CautionId2[row8]+" Description:"+ CautionDesc2[row8]+" Amount:"+ CautionAmt2[row8]+" Comment:"+ CautionComment2[row8]);
+                                htmlTable.Append("<tr>");
+                                htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionId2[row8]);
+                                htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionDesc2[row8]);
+                                htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionAmt2[row8].ToString("N2"));
+                                htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionComment2[row8]);
+                                htmlTable.Append("</tr>");
+                            }
+                            htmlTable.Append("</table>");
+                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                            string body = "Below are the Additional Comments in Variable File of Client:" + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                            if (Service1.subject == "")
+                            {
+                                Service1.subject = subject;
+                            }
+                            Service1.body = Service1.body + body;
+                        }
                         if (CautionId.Count != 0)
                         {
-                            
                             StringBuilder htmlTable = new StringBuilder();
                             htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
                             // Add table headers

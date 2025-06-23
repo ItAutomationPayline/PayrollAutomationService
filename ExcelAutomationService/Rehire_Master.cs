@@ -40,6 +40,7 @@ namespace ExcelAutomationService
                     int town = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "town");
                     int pincode = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "ZIP / Postal Code");
                     int marriedornot = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "marital status");
+                    int ManagerTier = 200;
                     //int ifsccode = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "sort code");
                     //int acno = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "account number");
                     int dob = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "date of birth");
@@ -153,6 +154,11 @@ namespace ExcelAutomationService
                         }
                         outputWorksheet.Cells[1, 84].Value = "Userdefined 2 Code";
                         outputWorksheet.Cells[1, 85].Value = "Note";
+                        if (filePath.ToLower().Contains("anthology") || filePath.ToLower().Contains("blackboard"))
+                        {
+                            outputWorksheet.Cells[1, 85].Value = "Manager Tier";
+                            ManagerTier = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Manager Tier");
+                        }
                         outputWorksheet.Cells[1, 86].Value = "Userdefined 4 Code";
                         outputWorksheet.Cells[1, 87].Value = "Userdefined 5 Code";
                         outputWorksheet.Cells[1, 88].Value = "Userdefined 6";
@@ -354,6 +360,13 @@ namespace ExcelAutomationService
                                 }
                                 var Nationality = inputWorkSheet.Cells[row, nationality].Text;
                                 outputWorksheet.Cells[row7, 105].Value = Nationality;
+                                if (filePath.ToLower().Contains("anthology") || filePath.ToLower().Contains("blackboard"))
+                                {
+                                    if (Service1.ShrinkString(inputWorkSheet.Cells[row, ManagerTier].Text) != "")
+                                    {
+                                        outputWorksheet.Cells[row7, 85].Value = inputWorkSheet.Cells[row, ManagerTier].Text;
+                                    }
+                                }
                                 var Pension = inputWorkSheet.Cells[row, pension].GetValue<string>();
                                 Pension = Pension.ToLower();
                                 Pension = Pension.Replace(" ", "");
@@ -519,7 +532,7 @@ namespace ExcelAutomationService
                             }
                             htmlTable.Append("</table>");
                             string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
-                            string body = "Rehire cases are found in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                            string body = "Rehire cases are found in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>Kindly check Web-User type in Ascent.<br><br>";
                             if (Service1.subject == "")
                             {
                                 Service1.subject = subject;

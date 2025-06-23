@@ -89,3 +89,5 @@ D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationServic
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAut.F62FAD31.Up2Date
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.exe
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.pdb
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Security.Cryptography.Xml.dll
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Security.Cryptography.Xml.xml

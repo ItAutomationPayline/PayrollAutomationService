@@ -54,6 +54,7 @@ namespace ExcelAutomationService
                     int jobtitle = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "job title");
                     int pancard = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Permanent Account Number (PAN)");
                     int emailid = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Email Address");
+                    int ManagerTier=200;
                     int pension = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Employee Pension Scheme");
                     //int bfid = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "Hr id");
                     int primarynameasperbank = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "Beneficiary Name");
@@ -187,6 +188,11 @@ namespace ExcelAutomationService
                         }
                         outputWorksheet.Cells[1, 84].Value = "Userdefined 2 Code";
                         outputWorksheet.Cells[1, 85].Value = "Note";
+                        if (filePath.ToLower().Contains("anthology") || filePath.ToLower().Contains("blackboard"))
+                        {
+                            outputWorksheet.Cells[1, 85].Value = "Manager Tier";
+                            ManagerTier = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Manager Tier");
+                        }
                         outputWorksheet.Cells[1, 86].Value = "Userdefined 4 Code";
                         outputWorksheet.Cells[1, 87].Value = "Userdefined 5 Code";
                         outputWorksheet.Cells[1, 88].Value = "Userdefined 6";
@@ -467,6 +473,13 @@ namespace ExcelAutomationService
                                     outputWorksheet.Cells[row7, 61].Value = pfregistrationcode;
                                 }
                                 outputWorksheet.Cells[row7, 101].Value = Pension;
+                                if (filePath.ToLower().Contains("anthology") || filePath.ToLower().Contains("blackboard"))
+                                {
+                                    if (Service1.ShrinkString(inputWorkSheet.Cells[row, ManagerTier].Text) != "")
+                                    {
+                                        outputWorksheet.Cells[row7, 85].Value = inputWorkSheet.Cells[row, ManagerTier].Text;
+                                    }
+                                }
                                 if (BeneficiariesData.ContainsKey(HRID))
                                 {
                                     validCharsRegex = new Regex("[^a-zA-Z ]");
