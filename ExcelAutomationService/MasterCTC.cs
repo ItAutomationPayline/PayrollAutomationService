@@ -12,8 +12,7 @@ namespace ExcelAutomationService
     {
         public static void CTC_Master(string ctccodes, string filePath, string destinationFolder)
         {
-            try
-            {
+            try{
                 //string vlookuppath = @"E:\PAYROLL_SERVER\Automation\Config\" + "["+ Path.GetFileName(filePath)+"]";
                 //Service1.PathLog("VlookupPath:"+vlookuppath);
                 using (var package = new ExcelPackage(new FileInfo(filePath)))
@@ -28,20 +27,24 @@ namespace ExcelAutomationService
                     int payfreq = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Pay Frequency");
                     int frequencyamount = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Frequency Amount");
                     int amount = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Amount");
-
+                    string ctccolumnname, ctcpayfreq, ctcamountcolumn;
                     using (var outputPackage = new ExcelPackage())
                     {
                         var outputWorksheet = outputPackage.Workbook.Worksheets.Add("Ctc_New_Master");
                         outputWorksheet.Cells[1, 1].Value = "Employee Number";
                         outputWorksheet.Cells[1, 2].Value = "With effect From(YYYY-MM-DD)";
                         outputWorksheet.Cells[1, 3].Value = "Annual CTC";
-                        using (var CTCPackage = new ExcelPackage(ctccodes)) 
+                        using (var CTCPackage = new ExcelPackage(ctccodes))
                         {
                             var ctcsheet= CTCPackage.Workbook.Worksheets[0];
                             int ctclength = ctcsheet.Dimension.End.Row;
-                            int row = 1;
+                            int row = 2;
                             int coll=0;
-                            for ( coll = 4; coll<= ctclength+3; coll++)
+                            ctccolumnname = ctcsheet.Cells[2,2].Text;
+                            ctcpayfreq= ctcsheet.Cells[2, 3].Text;
+                            ctcamountcolumn = ctcsheet.Cells[2, 4].Text;
+                            outputWorksheet.Cells[1, 3].Value= ctcsheet.Cells[2, 1].Text;
+                            for ( coll = 3; coll<= ctclength+3; coll++)
                             {
                                 outputWorksheet.Cells[1,coll].Value= ctcsheet.Cells[row,1].Text;
                                 //if (ctcsheet.Cells[2, coll].Text == ""|| ctcsheet.Cells[2, coll].Text == "0")
@@ -51,7 +54,7 @@ namespace ExcelAutomationService
                                     {
                                         outputWorksheet.Cells[2, coll].Formula = @"=VLOOKUP(A2,'E:\PAYROLL_SERVER\Automation\Config\[1temp.xlsx]Joiner and Changes '!$B$2:$AR$29,43,0)";
                                         //outputWorksheet.Cells[2, coll].Formula = ctcsheet.Cells[row, 2].Formula.Replace(@"E:\PAYROLL_SERVER\Automation\Input\[McAfee_Mcafee Software (India) Pvt Ltd._India_February_20250211_Payroll_Data.xlsx]", Path.GetFileName(filePath));
-                                        Service1.PathLog(outputWorksheet.Cells[2, coll].Formula);
+                                        //Service1.PathLog(outputWorksheet.Cells[2, coll].Formula);
                                     }
                                     else { 
                                     outputWorksheet.Cells[2, coll].Formula = ctcsheet.Cells[row, 2].Formula;
@@ -85,9 +88,15 @@ namespace ExcelAutomationService
                                 if (inputWorkSheet.Cells[row, hrid].GetValue<string>() == t)
                                 {
                                     outputWorksheet.Cells[row2, 2].Value = inputWorkSheet.Cells[row, witheffectfrom].GetValue<string>();
-                                    if (inputWorkSheet.Cells[row, payelementshortcode].GetValue<string>().ToLower().Contains("basic") && inputWorkSheet.Cells[row, payfreq].GetValue<string>() == "Annual") 
+                                    if (Service1.ShrinkString( inputWorkSheet.Cells[row, payelementshortcode].GetValue<string>()).Equals(Service1.ShrinkString(ctccolumnname)) && Service1.ShrinkString(inputWorkSheet.Cells[row, payfreq].GetValue<string>()) == Service1.ShrinkString(ctcpayfreq)) 
                                     {
+                                        if (Service1.ShrinkString(ctcamountcolumn)=="amount") { 
                                         outputWorksheet.Cells[row2, 3].Value = inputWorkSheet.Cells[row, amount].GetValue<double>();
+                                        }
+                                        if (Service1.ShrinkString(ctcamountcolumn) == "frequencyamount")
+                                        {
+                                            outputWorksheet.Cells[row2, 3].Value = inputWorkSheet.Cells[row, frequencyamount].GetValue<double>();
+                                        }
                                     }
                                 }
                             }
@@ -97,7 +106,7 @@ namespace ExcelAutomationService
                         int outputcolumns = outputWorksheet.Dimension.End.Column;
                         int col = 4;
 
-                        for (col = 4; col <= outputcolumns; col++)
+                        for (col = 3; col <= outputcolumns; col++)
                         {
                             // Get the base formula from row 2 (template)
                             var baseFormula = outputWorksheet.Cells[2, col].Formula;
@@ -105,19 +114,48 @@ namespace ExcelAutomationService
                             {
                                 if (!string.IsNullOrWhiteSpace(baseFormula))
                                 {
+                                    Service1.PathLog("Formula executed for " + outputWorksheet.Cells[1, col].Text + " Column.");
                                     // Adjust the base formula to the current row
                                     string adjustedFormula = AdjustFormulaToRow(baseFormula, 2, row2);
 
                                     outputWorksheet.Cells[row2, col].Formula = adjustedFormula;
                                 }
+                                else if (outputWorksheet.Cells[2, col].Text.ToLower().Contains("pickup")) 
+                                {
+                                    Service1.PathLog("Pickup executed for " + outputWorksheet.Cells[1, col].Text + " Column.");
+                                    for (int r=3;r<=outputrows;r++){
+                                        outputWorksheet.Cells[r, col].Value = outputWorksheet.Cells[2, col].Text;
+                                    }
+                                }
+                                //if (outputWorksheet.Cells[row2, col].Text.ToLower().Contains("pickup")){
+                                //    outputWorksheet.Cells[row2, col].Value = PickupValueByEmployeeId(outputWorksheet.Cells[row2, 1].Text, outputWorksheet.Cells[row2, col].Text);
+                                //}
                                 else
                                 {
                                     var value = outputWorksheet.Cells[2, col].Text;
-                                    if (value.All(char.IsDigit))
+                                    if (value.ToLower().Contains("pickup"))
                                     {
-                                        outputWorksheet.Cells[row2, col].Value = value;
+                                        outputWorksheet.Cells[row2, col].Value = PickupValueByEmployeeId(outputWorksheet.Cells[row2, 1].Text, outputWorksheet.Cells[row2, col].Text);
+                                    }
+                                    else 
+                                    {
+                                        if(value.All(char.IsDigit)&& outputWorksheet.Cells[row2, col].Text=="")
+                                            outputWorksheet.Cells[row2, col].Value = value;
                                     }
                                 }
+                                //else
+                                //{
+                                //    var value = outputWorksheet.Cells[2, col].Text;
+                                //    if (value.All(char.IsDigit)&& !string.IsNullOrWhiteSpace(outputWorksheet.Cells[2,col].Formula))
+                                //    {
+                                //        Service1.PathLog("As it is value used for " + outputWorksheet.Cells[1, col].Text + " Column.");
+                                //        outputWorksheet.Cells[row2, col].Value = value;
+                                //    }
+                                //    if (value.ToLower().Contains("pickup"))
+                                //    {
+                                //        outputWorksheet.Cells[row2, col].Value = PickupValueByEmployeeId(outputWorksheet.Cells[row2, 1].Text, outputWorksheet.Cells[row2, col].Text);
+                                //    }
+                                //}
                             }
                             //else 
                             //{
@@ -126,6 +164,86 @@ namespace ExcelAutomationService
                             //        outputWorksheet.Cells[row2, col].Value = value;
                             //    }
                             //}
+                        }
+                        for (col = 4; col <= outputcolumns; col++)
+                        {
+                            var baseText = outputWorksheet.Cells[2, col].Text;
+                            for (row2 = 2; row2 <= outputrows; row2++)
+                            {
+                                if (outputWorksheet.Cells[row2, col].Text.ToLower().Contains("pickup"))
+                                {
+                                    outputWorksheet.Cells[row2, col].Value = PickupValueByEmployeeId(outputWorksheet.Cells[row2, 1].Text, outputWorksheet.Cells[row2, col].Text);
+                                }
+                            }
+                        }
+                        string PickupValueByEmployeeId(string employeeId, string pickupString)
+                        {
+                            // Parse the pickup string
+                            var parts = pickupString.Split(new[] { "[", "]" }, StringSplitOptions.RemoveEmptyEntries);
+                            Service1.PathLog(parts[0]+" " + parts[1] + " " + parts[2] + " " + parts[3]);
+                            if (parts.Length != 4)
+                                throw new ArgumentException("Invalid pickup string format. Expected: pickup[filePath][sheetName][columnName]");
+
+                            string fP = parts[1];
+                            if (fP.ToLower() == "input")
+                            {
+                                fP = filePath;
+                            }
+                            string sheetName = parts[2];
+                            string columnName = parts[3];
+
+                            if (!File.Exists(filePath)) {
+                                Service1.PathLog("Input file not found"+ filePath);
+                                throw new FileNotFoundException("Input file not found", filePath);
+                            }
+
+                            using (var vlookuppackage = new ExcelPackage(new FileInfo(filePath)))
+                            {
+                                var worksheet = vlookuppackage.Workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals(sheetName, StringComparison.OrdinalIgnoreCase));
+                                if (worksheet == null) {
+                                    Service1.PathLog($"Sheet '{sheetName}' not found.");
+                                    throw new ArgumentException($"Sheet '{sheetName}' not found.");
+                                }
+
+                                int startRow = worksheet.Dimension.Start.Row;
+                                int endRow = worksheet.Dimension.End.Row;
+                                int startCol = worksheet.Dimension.Start.Column;
+                                int endCol = worksheet.Dimension.End.Column;
+
+                                // Find column indexes for "Employee ID" and target column
+                                int empIdCol = -1, targetCol = -1;
+                                empIdCol=Service1.getColumnNumber(filePath,worksheet.ToString(),"HR ID");
+                                targetCol= Service1.getColumnNumber(filePath, worksheet.ToString(), columnName);
+                                //for (int col2 = startCol; col2 <= endCol; col2++)
+                                //{
+                                //    string header = worksheet.Cells[startRow, col2].Text.Trim();
+                                //    if (header.Equals("HR ID", StringComparison.OrdinalIgnoreCase))
+                                //        empIdCol = col2;
+                                //    if (header.Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                                //        targetCol = col2;
+                                //}
+
+                                //if (empIdCol == -1) {
+                                //    Service1.PathLog("'Employee ID' column not found.");
+                                //    throw new ArgumentException("'Employee ID' column not found.");
+                                //}
+                                //if (targetCol == -1) {
+                                //    Service1.PathLog($"Column '{columnName}' not found.");
+                                //    throw new ArgumentException($"Column '{columnName}' not found.");
+                                //}
+
+                                // Find the matching employee ID row
+                                for (int row = startRow + 1; row <= endRow; row++)
+                                {
+                                    string currentEmpId = worksheet.Cells[row, empIdCol].Text.Trim();
+                                    if (currentEmpId.Equals(employeeId, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        return worksheet.Cells[row, targetCol].Text;
+                                    }
+                                }
+
+                                return null; // Employee ID not found
+                            }
                         }
                         string AdjustFormulaToRow(string formula, int baseRow, int targetRow)
                         {
@@ -155,10 +273,10 @@ namespace ExcelAutomationService
                         outputcolumns = outputWorksheet.Dimension.End.Column;
                         for (col=2; col<=outputcolumns;col++)
                         {
-                            if (outputWorksheet.Cells[2,col].Text.ToLower()== "fixed") 
+                            if (outputWorksheet.Cells[2,col].Text.ToLower()== "fixedamount"|| outputWorksheet.Cells[2, col].Text.ToLower() == "fixed") 
                             {
                                 outputWorksheet.Cells[2, col].Value = 0;
-                                Service1.PathLog("Got fixed");
+                                //Service1.PathLog("Got fixed");
                                 for (int row3 = 2; row3 <= lastRow; row3++)
                                 {
                                     for (int row = 2; row <= lastRow; row++)
@@ -170,6 +288,27 @@ namespace ExcelAutomationService
                                         }
                                     }
                                     if (outputWorksheet.Cells[row2, col].Text == ""&& outputWorksheet.Cells[row2, 1].Text != "") 
+                                    {
+                                        outputWorksheet.Cells[row2, col].Value = 0;
+                                    }
+                                    row2++;
+                                }
+                            }
+                            if (outputWorksheet.Cells[2, col].Text.ToLower() == "fixedfrequencyamount")
+                            {
+                                outputWorksheet.Cells[2, col].Value = 0;
+                                //Service1.PathLog("Got fixed");
+                                for (int row3 = 2; row3 <= lastRow; row3++)
+                                {
+                                    for (int row = 2; row <= lastRow; row++)
+                                    {
+                                        if ((Service1.ShrinkString(inputWorkSheet.Cells[row, hrid].Text) == Service1.ShrinkString(outputWorksheet.Cells[row2, 1].Text) && (Service1.ShrinkString(inputWorkSheet.Cells[row, payelementshortcode].Text) == Service1.ShrinkString(outputWorksheet.Cells[1, col].Text))))
+                                        {
+                                            outputWorksheet.Cells[row2, col].Value = inputWorkSheet.Cells[row, frequencyamount].GetValue<double>();
+                                            row2++;
+                                        }
+                                    }
+                                    if (outputWorksheet.Cells[row2, col].Text == "" && outputWorksheet.Cells[row2, 1].Text != "")
                                     {
                                         outputWorksheet.Cells[row2, col].Value = 0;
                                     }

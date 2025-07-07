@@ -91,3 +91,4 @@ D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationServic
 D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.pdb
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Security.Cryptography.Xml.dll
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Security.Cryptography.Xml.xml
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\NCalc.dll

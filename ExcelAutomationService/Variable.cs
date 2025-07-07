@@ -1,4 +1,5 @@
 ﻿using Microsoft.Office.Interop.Excel;
+using NCalc;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System;
@@ -42,7 +43,6 @@ namespace ExcelAutomationService
                     // Read data from input sheet
                     for (int row = 2; row <= lastRow; row++)
                     {
-                        
                         var cell = inputWorkSheet.Cells[row, hridCol];
                         // Get the background color of the cell
                         var bgColor = cell.Style.Fill.BackgroundColor;
@@ -189,13 +189,81 @@ namespace ExcelAutomationService
                             bool extrahourspay = temp.Contains("extrahours");
                             if (containsEncashment || containsHoliday || containsOvertime || containsShift|| extrahourspay)
                             {
-                                Service1.PathLog("check for encashment/holiday/Overtime/shift/extrahours is in units or amount in variable file.");
                                 int OutputLastRow = outputWorksheet.Dimension.End.Row;
+                                string formula="";
+                                using (var ascentcodes = new ExcelPackage(new FileInfo(ascendcodes)))
+                                {
+                                    bool sheetExists = ascentcodes.Workbook.Worksheets["Variable Units Calculation"] != null;
+                                    if (sheetExists){
+                                        var unitsheet = ascentcodes.Workbook.Worksheets["Variable Units Calculation"];
+                                        int endrow = unitsheet.Dimension.End.Row;
+                                        for (int row4 = 2;row4<=endrow;row4++){
+                                            if (Service1.ShrinkString(unitsheet.Cells[row4,1].Text)==temp){
+                                                Service1.PathLog(unitsheet.Cells[row4, 2].Text);
+                                                formula = unitsheet.Cells[row4, 2].Text;
+                                            }
+                                        }
+
+                                        for (int row2=2;row2<=OutputLastRow;row2++){
+                                            if (outputWorksheet.Cells[row2,column].GetValue<double>()!=0 && formula!="")          
+                                            {
+                                                try
+                                                {
+                                                    Expression ex = new Expression(formula);
+                                                    string d = outputWorksheet.Cells[row2, column].GetValue<string>();
+                                                    ex.Parameters["value"] = outputWorksheet.Cells[row2, column].GetValue<double>();
+                                                    ex.Parameters["previousmonthtotaldays"] = Service1.GetPreviousMonthTotalDays();
+                                                    ex.Parameters["previousmonthannualctc"]= Service1.GetPreviousMonthAnnualCTC(outputWorksheet.Cells[row2,1].Text);
+                                                    outputWorksheet.Cells[row2, column].Value = ex.Evaluate();
+                                                }
+                                                catch (Exception e)
+                                                {
+                                                    Service1.PathLog(e.ToString());
+                                                    throw;
+                                                }
+                                            }
+                                        }
+
+                                    }
+                                    
+                                
+                                Service1.PathLog("check for encashment/holiday/Overtime/shift/extrahours is in units or amount in variable file.");
+                                
                                 // Define the range for the entire column
                                 var columnRange = outputWorksheet.Cells[1, column, OutputLastRow, column];
                                 // Apply fill color
                                 columnRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                                 columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                                }
+                            }
+                            if (containsEncashment)
+                            {
+                                int OutputLastRow = outputWorksheet.Dimension.End.Row;
+
+                                using (var newPackage = new ExcelPackage())
+                                {
+                                    var newWorksheet = newPackage.Workbook.Worksheets.Add("EncashmentData");
+
+                                    // Copy header
+                                    newWorksheet.Cells[1, 1].Value = outputWorksheet.Cells[1, 1].Value;
+                                    newWorksheet.Cells[1, 2].Value = outputWorksheet.Cells[1, column].Value;
+
+                                    // Copy data
+                                    for (int row = 2; row <= OutputLastRow; row++)
+                                    {
+                                        newWorksheet.Cells[row, 1].Value = outputWorksheet.Cells[row, 1].Value;
+                                        newWorksheet.Cells[row, 2].Value = outputWorksheet.Cells[row, column].Value;
+                                    }
+
+                                    // Optional: format
+                                    newWorksheet.Column(1).AutoFit();
+                                    newWorksheet.Column(2).AutoFit();
+
+                                    // Save file
+                                    string encashmentFilePath = Path.Combine(destinationFolder, $"Variable EncashmentData_{Path.GetFileName(filePath)}");
+                                    newPackage.SaveAs(new FileInfo(encashmentFilePath));
+                                    Service1.PathLog("Encashment data file created: " + encashmentFilePath);
+                                }
                             }
                         }
                         // Save output file
@@ -203,6 +271,7 @@ namespace ExcelAutomationService
                         // outputPackage.SaveAs(new FileInfo(outputFilePath));
                         FileInfo newFileInfo = new FileInfo(newFileName);
                         outputWorksheet.Cells[outputWorksheet.Dimension.Address].AutoFitColumns();
+
                         string cellValue = outputWorksheet.Cells[2, 1].GetValue<string>();
                         Service1.ShrinkString(cellValue);
                         if ((cellValue != null) && (cellValue != " ") && (cellValue != " "))

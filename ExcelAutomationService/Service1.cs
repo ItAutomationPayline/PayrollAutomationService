@@ -33,6 +33,7 @@ namespace ExcelAutomationService
         string sourceFolder = @"E:\PAYROLL_SERVER\Automation\Input";     // Folder to watch for Excel files
         public static string destination = @"E:/PAYROLL_SERVER/Automation/output";
         public static string ctcfolder = @"E:/PAYROLL_SERVER/Automation/output";
+        public static string employeemaster = @"E:/PAYROLL_SERVER/Automation/output";
         string destinationFolder = @"E:/PAYROLL_SERVER/Automation/output";
         string ascendcodes = "E:/PAYROLL_SERVER/Automation/Twilio_Twilio Technology/Automation_Ascent_Codes/Ascent Codes.xlsx";
         public static string subject = "";
@@ -448,6 +449,43 @@ namespace ExcelAutomationService
                 recipients= new string[] { "dayaghan.limaye@paylineindia.com", "dhanashree.athavale@paylineindia.com", "tushar.chaudhari@paylineindia.com", "office12@yaminipanchwagh.com"};
             }
         }
+
+        public static double GetPreviousMonthAnnualCTC(string empid){
+            if (Directory.Exists(employeemaster))
+            {
+                string[] referencefile = Directory.GetFiles((employeemaster), "*.xlsx");
+                string empmaster = employeemaster + Path.GetFileName(referencefile[0]);
+                using (var package = new ExcelPackage(new FileInfo(empmaster)))
+                {
+                    var CTCMaster = package.Workbook.Worksheets[0];
+                    int empno = getColumnNumber(empmaster, CTCMaster.ToString(), "EmpNo");
+                    int annualCTC= getColumnNumber(empmaster, CTCMaster.ToString(), "CTC");
+                    int endrow = CTCMaster.Dimension.End.Row;
+                    for (int row=2;row<=endrow;row++){
+                        if (CTCMaster.Cells[row,empno].Text==empid)
+                        {
+                            return CTCMaster.Cells[row,annualCTC].GetValue<double>();
+                        }
+                    }
+                }
+            }
+            PathLog("HRID:"+empid+" does not exist in employee master for units conversion. Kindly ensure that correct employee master is pasted in Employee Master folder.");
+            return 0;
+        }
+        public static int GetPreviousMonthTotalDays()
+        {
+            DateTime today = DateTime.Today;
+
+            // Move to the previous month
+            int year = today.Month == 1 ? today.Year - 1 : today.Year;
+            int month = today.Month == 1 ? 12 : today.Month - 1;
+
+            // Get total days in that month
+            int daysInPreviousMonth = DateTime.DaysInMonth(year, month);
+
+            return daysInPreviousMonth;
+        }
+
         public static void GetPlateCtcClients()
         {
             string Alerts = @"E:\PAYROLL_SERVER\Automation\Config\CTC_Breakup_By_Client.txt";
@@ -483,6 +521,7 @@ namespace ExcelAutomationService
                             string[] referencefile=Directory.GetFiles((destinationFolder), "*.xlsx");
                             ascendcodes = destinationFolder + "/" + Path.GetFileName(referencefile[0]);
                             ctcfolder = destinationFolder + "/CTC_Structure/";
+                            employeemaster = destinationFolder + "/Employee Master/";
                             destinationFolder = destinationFolder + "/" + formattedDate + " " + folderName;
                             destination = destinationFolder;
                             Console.WriteLine(ascendcodes);
@@ -509,6 +548,7 @@ namespace ExcelAutomationService
                             string[] referencefile = Directory.GetFiles((destinationFolder), "*.xlsx");
                             ascendcodes = destinationFolder + "/" + Path.GetFileName(referencefile[0]);
                             ctcfolder = destinationFolder + "/CTC_Structure/";
+                            employeemaster = destinationFolder + "/Employee Master/";
                             destinationFolder = destinationFolder + "/" + formattedDate + " " + folderName;
                             destination = destinationFolder;
                             Console.WriteLine(ascendcodes);

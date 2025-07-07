@@ -78,14 +78,14 @@
     </dependentAssembly>
   </dependency>
   <dependency>
-    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="ExcelAutomationService.exe" size="94640">
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="ExcelAutomationService.exe" size="99248">
       <assemblyIdentity name="ExcelAutomationService" version="1.0.0.0" language="neutral" processorArchitecture="msil" />
       <hash>
         <dsig:Transforms>
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-        <dsig:DigestValue>6yDVJK8FrQmFJBPx8HYAJd3OmX96CQzvcS/l1mc7L5A=</dsig:DigestValue>
+        <dsig:DigestValue>xIikKrS+KlnozK3sALxktg8jNR1C0RVUxsIhVgMzYOE=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>
@@ -410,6 +410,18 @@
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
         <dsig:DigestValue>P8aAXEgRG6b23fEDMl2GP+TLyjgCu8OMUSYREOOXfmc=</dsig:DigestValue>
+      </hash>
+    </dependentAssembly>
+  </dependency>
+  <dependency>
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="NCalc.dll" size="194560">
+      <assemblyIdentity name="NCalc" version="1.3.8.0" publicKeyToken="973CDE3F1CAFED03" language="neutral" processorArchitecture="msil" />
+      <hash>
+        <dsig:Transforms>
+          <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
+        </dsig:Transforms>
+        <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
+        <dsig:DigestValue>ScNU0jQWplizKeP4Zo3jTAKaf/jCTwX6xJilcsohXSU=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>
