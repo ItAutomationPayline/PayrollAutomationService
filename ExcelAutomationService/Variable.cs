@@ -40,13 +40,16 @@ namespace ExcelAutomationService
                     List<string> CautionDesc2 = new List<string>();
                     List<double> CautionAmt2 = new List<double>();
                     List<string> CautionComment2 = new List<string>();
+                    List<string> unitsnotfoundId = new List<string>();
+                    List<string> unitsnotfoundDesc = new List<string>();
+                    List<double> unitsnotfoundAmt = new List<double>();
                     // Read data from input sheet
                     for (int row = 2; row <= lastRow; row++)
                     {
                         var cell = inputWorkSheet.Cells[row, hridCol];
                         // Get the background color of the cell
                         var bgColor = cell.Style.Fill.BackgroundColor;
-                        if (!string.IsNullOrEmpty(bgColor.Rgb) && !bgColor.Rgb.Equals("FFFFFF")) 
+                        if (!string.IsNullOrEmpty(bgColor.Rgb) && !bgColor.Rgb.Equals("FFFFFF"))
                         {
                             NewHrid.Add(cell.Text);
                         }
@@ -66,7 +69,7 @@ namespace ExcelAutomationService
                             employeeData[hrid][payElement] = 0;
                         }
                         employeeData[hrid][payElement] += amount;
-                        if (inputWorkSheet.Cells[row, comment].Text != "")
+                        if (inputWorkSheet.Cells[row, comment].Text != "" && !inputWorkSheet.Cells[row, comment].Text.Contains("Amount"))
                         {
                             CautionId2.Add(hrid);
                             CautionDesc2.Add(payElement);
@@ -100,7 +103,7 @@ namespace ExcelAutomationService
                                 double amount = kvp.Value.ContainsKey(payElement) ? kvp.Value[payElement] : 0;
                                 outputWorksheet.Cells[rowIndex, i + 2].Value = amount;
                                 
-                                if (amount >= 1500000.00 && NewHrid.Contains(hrid))
+                                if (amount >= 200000.00 && NewHrid.Contains(hrid))
                                 {
                                     CautionId.Add(hrid);
                                     CautionDesc.Add(payElement);
@@ -175,6 +178,14 @@ namespace ExcelAutomationService
                             //Service1.SendEmails(Service1.recipients, subject, body);
                             //QuerySheet.VariableAmountQuery(destinationFolder, CautionId, CautionDesc, CautionAmt);
                         }
+                        using (var ascentcodes = new ExcelPackage(new FileInfo(ascendcodes)))
+                        {
+                            bool sheetExists = ascentcodes.Workbook.Worksheets["Variable Units Calculation"] != null;
+                            if (sheetExists)
+                            {
+                                Service1.FetchEmployeeMaster();
+                            }
+                        }
                         for (int column = 1; column <= payElementCodes.Count + 1; column++)
                         {
                             outputWorksheet.Column(column).Style.Numberformat.Format = "0.00";
@@ -187,7 +198,10 @@ namespace ExcelAutomationService
                             bool containsOvertime = temp.Contains("overtime");
                             bool containsShift = temp.Contains("shift");
                             bool extrahourspay = temp.Contains("extrahours");
-                            if (containsEncashment || containsHoliday || containsOvertime || containsShift|| extrahourspay)
+                            bool severencepay = temp.Contains("severance");
+                            bool noticepayout = temp.Contains("noticepayout");
+                            bool ot = temp.Contains("otamount");
+                            if (containsEncashment || containsHoliday || containsOvertime || containsShift|| extrahourspay || severencepay || noticepayout||ot)
                             {
                                 int OutputLastRow = outputWorksheet.Dimension.End.Row;
                                 string formula="";
@@ -203,7 +217,6 @@ namespace ExcelAutomationService
                                                 formula = unitsheet.Cells[row4, 2].Text;
                                             }
                                         }
-
                                         for (int row2=2;row2<=OutputLastRow;row2++){
                                             if (outputWorksheet.Cells[row2,column].GetValue<double>()!=0 && formula!="")          
                                             {
@@ -213,7 +226,51 @@ namespace ExcelAutomationService
                                                     string d = outputWorksheet.Cells[row2, column].GetValue<string>();
                                                     ex.Parameters["value"] = outputWorksheet.Cells[row2, column].GetValue<double>();
                                                     ex.Parameters["previousmonthtotaldays"] = Service1.GetPreviousMonthTotalDays();
-                                                    ex.Parameters["previousmonthannualctc"]= Service1.GetPreviousMonthAnnualCTC(outputWorksheet.Cells[row2,1].Text);
+                                                    if (formula.Contains("previousmonthannualctc")) 
+                                                    { 
+                                                        double ctc= Service1.GetPreviousMonthAnnualCTC(outputWorksheet.Cells[row2, 1].Text);
+                                                        ex.Parameters["previousmonthannualctc"] = ctc;
+                                                        if (ctc == 1)
+                                                        {
+                                                            int targetRow = row2; // Example row
+                                                            var rowRange = outputWorksheet.Cells[targetRow, 1, targetRow, 99];
+                                                            unitsnotfoundId.Add(outputWorksheet.Cells[row2, 1].Text);
+                                                            unitsnotfoundDesc.Add(outputWorksheet.Cells[1, column].Text);
+                                                            unitsnotfoundAmt.Add(outputWorksheet.Cells[row2, column].GetValue<double>());
+                                                            rowRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                                            rowRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                                                        }
+                                                    }
+                                                    if (formula.Contains("previousmonthhbctc"))
+                                                    {
+                                                        double ctc = Service1.GetPreviousMonthHBCTC(outputWorksheet.Cells[row2, 1].Text);
+                                                        ex.Parameters["previousmonthhbctc"] = ctc;
+                                                        if (ctc == 1)
+                                                        {
+                                                            int targetRow = row2; // Example row
+                                                            var rowRange = outputWorksheet.Cells[targetRow, 1, targetRow, outputWorksheet.Dimension.End.Row];
+                                                            unitsnotfoundId.Add(outputWorksheet.Cells[row2, 1].Text);
+                                                            unitsnotfoundDesc.Add(outputWorksheet.Cells[1, column].Text);
+                                                            unitsnotfoundAmt.Add(outputWorksheet.Cells[row2, column].GetValue<double>());
+                                                            rowRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                                            rowRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                                                        }
+                                                    }
+                                                    if (formula.Contains("previousmonthymediactc"))
+                                                    {
+                                                        double ctc = Service1.GetPreviousMonthymediaCTC(outputWorksheet.Cells[row2, 1].Text);
+                                                        ex.Parameters["previousmonthymediactc"] = ctc;
+                                                        if (ctc == 1)
+                                                        {
+                                                            int targetRow = row2; // Example row
+                                                            var rowRange = outputWorksheet.Cells[targetRow, 1, targetRow, outputWorksheet.Dimension.End.Row];
+                                                            unitsnotfoundId.Add(outputWorksheet.Cells[row2, 1].Text);
+                                                            unitsnotfoundDesc.Add(outputWorksheet.Cells[1, column].Text);
+                                                            unitsnotfoundAmt.Add(outputWorksheet.Cells[row2, column].GetValue<double>());
+                                                            rowRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                                            rowRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                                                        }
+                                                    }
                                                     outputWorksheet.Cells[row2, column].Value = ex.Evaluate();
                                                 }
                                                 catch (Exception e)
@@ -223,10 +280,7 @@ namespace ExcelAutomationService
                                                 }
                                             }
                                         }
-
                                     }
-                                    
-                                
                                 Service1.PathLog("check for encashment/holiday/Overtime/shift/extrahours is in units or amount in variable file.");
                                 
                                 // Define the range for the entire column
@@ -236,7 +290,7 @@ namespace ExcelAutomationService
                                 columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
                                 }
                             }
-                            if (containsEncashment)
+                            if (containsEncashment && filePath.ToLower().Contains("twilio"))
                             {
                                 int OutputLastRow = outputWorksheet.Dimension.End.Row;
 
@@ -266,12 +320,42 @@ namespace ExcelAutomationService
                                 }
                             }
                         }
+                        if (unitsnotfoundId.Count != 0)
+                        {
+                            StringBuilder htmlTable = new StringBuilder();
+                            htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
+                            // Add table headers
+                            htmlTable.Append("<tr>");
+                            htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>HRID</th>");
+                            htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>PayElement Code</th>");
+                            htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>Amount</th>");
+                            htmlTable.Append("</tr>");
+                            // Add table rows
+                            for (int row8 = 0; row8 <= unitsnotfoundId.Count - 1; row8++)
+                            {
+                                htmlTable.Append("<tr>");
+                                htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", unitsnotfoundId[row8]);
+                                htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", unitsnotfoundDesc[row8]);
+                                htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", unitsnotfoundAmt[row8].ToString("N2"));
+                                htmlTable.Append("</tr>");
+                            }
+                            htmlTable.Append("</table>");
+                            string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                            string body = "Below are employees which were not found in employee master for Units conversion.<br>Ensure that previous month employee master is pasted in Employee Master folder.<br> Kindly ignore if these are new joinners.<br><br>"+ htmlTable.ToString()+"<br>";
+                            if (Service1.subject == "")
+                            {
+                                Service1.subject = subject;
+                            }
+                            Service1.body = Service1.body + body;
+                            //Service1.SendEmails(Service1.recipients, subject, body);
+                            //QuerySheet.VariableAmountQuery(destinationFolder, CautionId, CautionDesc, CautionAmt);
+                        }
                         // Save output file
                         string newFileName = Path.Combine(destinationFolder,Service1.FileCount+ "]Variable_" + Path.GetFileName(filePath));
                         // outputPackage.SaveAs(new FileInfo(outputFilePath));
                         FileInfo newFileInfo = new FileInfo(newFileName);
                         outputWorksheet.Cells[outputWorksheet.Dimension.Address].AutoFitColumns();
-
+                        Service1.EmployeeMaster.Clear();
                         string cellValue = outputWorksheet.Cells[2, 1].GetValue<string>();
                         Service1.ShrinkString(cellValue);
                         if ((cellValue != null) && (cellValue != " ") && (cellValue != " "))

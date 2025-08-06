@@ -78,14 +78,14 @@
     </dependentAssembly>
   </dependency>
   <dependency>
-    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="ExcelAutomationService.exe" size="99248">
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="ExcelAutomationService.exe" size="116656">
       <assemblyIdentity name="ExcelAutomationService" version="1.0.0.0" language="neutral" processorArchitecture="msil" />
       <hash>
         <dsig:Transforms>
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-        <dsig:DigestValue>xIikKrS+KlnozK3sALxktg8jNR1C0RVUxsIhVgMzYOE=</dsig:DigestValue>
+        <dsig:DigestValue>wRR4v8sNpmJxX2Yap7GfuAFTS91r1a1kkr3MJM2Uxnc=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>
