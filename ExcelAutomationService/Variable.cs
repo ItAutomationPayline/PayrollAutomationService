@@ -20,6 +20,7 @@ namespace ExcelAutomationService
                 string outputFilePath = Path.Combine(destinationFolder, "Variable_Pay_Summary.xlsx");
                 using (var package = new ExcelPackage(new FileInfo(filePath)))
                 {
+                    bool checkforunits=false;
                     int IP = Service1.getSheetNumber(filePath, "Variable Pay Inputs Data");
                     var inputWorkSheet = package.Workbook.Worksheets[IP];
                     int lastRow = inputWorkSheet.Dimension.End.Row;
@@ -28,7 +29,7 @@ namespace ExcelAutomationService
                     int comment= Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Additional Comment");
                     int payElementCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Pay Element Short Code");
                     int amountCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Amount");
-
+                    int unitsCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Number Of Units");
                     //Data structures to store unique pay elements and employee data
                     var employeeData = new Dictionary<string, Dictionary<string, double>>();
                     var payElementCodes = new HashSet<string>();
@@ -56,7 +57,15 @@ namespace ExcelAutomationService
                         string hrid = inputWorkSheet.Cells[row, hridCol].GetValue<string>();
                         string payElement = inputWorkSheet.Cells[row, payElementCol].GetValue<string>();
                         string amountText = inputWorkSheet.Cells[row, amountCol].GetValue<string>();
-                        double amount = double.TryParse(amountText, out var parsedAmount) ? parsedAmount : 0;
+                        string unitText = inputWorkSheet.Cells[row, unitsCol].GetValue<string>();
+                        double amount = 0;
+                        amount = double.TryParse(amountText, out var parsedAmount) ? parsedAmount : 0;
+
+                        // If amount is zero, try to get value from unitText
+                        if (amount == 0 && !string.IsNullOrEmpty(unitText))
+                        {
+                            amount = double.TryParse(unitText, out var unitParsedAmount) ? unitParsedAmount : 0;
+                        }
                         // Add pay element to the set
                         payElementCodes.Add(payElement);
                         // Add or update employee data
@@ -69,7 +78,8 @@ namespace ExcelAutomationService
                             employeeData[hrid][payElement] = 0;
                         }
                         employeeData[hrid][payElement] += amount;
-                        if (inputWorkSheet.Cells[row, comment].Text != "" && !inputWorkSheet.Cells[row, comment].Text.Contains("Amount"))
+                        var commentText = inputWorkSheet.Cells[row, comment].Text;
+                        if (inputWorkSheet.Cells[row, comment].Text != "" && !CautionComment2.Contains(commentText))
                         {
                             CautionId2.Add(hrid);
                             CautionDesc2.Add(payElement);
@@ -120,7 +130,6 @@ namespace ExcelAutomationService
                         {
                             StringBuilder htmlTable = new StringBuilder();
                             htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
-                            // Add table headers
                             htmlTable.Append("<tr>");
                             htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>HRID</th>");
                             htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>PayElement Code</th>");
@@ -200,10 +209,52 @@ namespace ExcelAutomationService
                             bool extrahourspay = temp.Contains("extrahours");
                             bool severencepay = temp.Contains("severance");
                             bool noticepayout = temp.Contains("noticepayout");
+                            bool notice = temp.Contains("notice");
                             bool ot = temp.Contains("otamount");
-                            if (containsEncashment || containsHoliday || containsOvertime || containsShift|| extrahourspay || severencepay || noticepayout||ot)
+
+                            int OutputLastRow = outputWorksheet.Dimension.End.Row;
+                            if (containsEncashment || containsHoliday || containsOvertime || containsShift || extrahourspay || severencepay || noticepayout || ot || notice)
                             {
-                                int OutputLastRow = outputWorksheet.Dimension.End.Row;
+                                OutputLastRow = outputWorksheet.Dimension.End.Row;
+                                Service1.PathLog("check for encashment/holiday/Overtime/shift/extrahours is in units or amount in variable file.");
+
+                                // Define the range for the entire column
+                                var columnRange = outputWorksheet.Cells[1, column, OutputLastRow, column];
+                                // Apply fill color
+                                columnRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                            }
+                        }
+                        for (int column = 1; column <= payElementCodes.Count + 1; column++)
+                        {
+                            outputWorksheet.Column(column).Style.Numberformat.Format = "0.00";
+                            // Get the header value of the current column
+                            string temp = outputWorksheet.Cells[1, column].GetValue<string>(); // Correctly reference the column header
+                            temp = Service1.ShrinkString(temp);
+                            // Check for specific keywords
+                            bool containsEncashment = temp.Contains("encashment");
+                            bool containsHoliday = temp.Contains("holiday");
+                            bool containsOvertime = temp.Contains("overtime");
+                            bool containsShift = temp.Contains("shift");
+                            bool extrahourspay = temp.Contains("extrahours");
+                            bool severencepay = temp.Contains("severance");
+                            bool noticepayout = temp.Contains("noticepayout");
+                            bool notice = temp.Contains("notice");
+                            bool ot = temp.Contains("otamount");
+
+                            int OutputLastRow = outputWorksheet.Dimension.End.Row;
+                            if (containsEncashment || containsHoliday || containsOvertime || containsShift || extrahourspay || severencepay || noticepayout || ot || notice)
+                            {
+                                checkforunits = true;
+                                OutputLastRow = outputWorksheet.Dimension.End.Row;
+                                Service1.PathLog("check for encashment/holiday/Overtime/shift/extrahours is in units or amount in variable file.");
+
+                                // Define the range for the entire column
+                                var columnRange = outputWorksheet.Cells[1, column, OutputLastRow, column];
+                                // Apply fill color
+                                //columnRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                //columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                            }
                                 string formula="";
                                 using (var ascentcodes = new ExcelPackage(new FileInfo(ascendcodes)))
                                 {
@@ -222,12 +273,17 @@ namespace ExcelAutomationService
                                             {
                                                 try
                                                 {
+                                                    formula = formula.Replace("amt(", "amount(");
                                                     Expression ex = new Expression(formula);
                                                     string d = outputWorksheet.Cells[row2, column].GetValue<string>();
+                                                    string k = Service1.ReplaceAmountPlaceholders(formula, outputWorksheet.Cells[row2, 1].Text);
+                                                    Service1.PathLog("formula after conversion"+k);
+                                                    ex = new Expression(Service1.ReplaceAmountPlaceholders(formula, outputWorksheet.Cells[row2, 1].Text));
                                                     ex.Parameters["value"] = outputWorksheet.Cells[row2, column].GetValue<double>();
                                                     ex.Parameters["previousmonthtotaldays"] = Service1.GetPreviousMonthTotalDays();
-                                                    if (formula.Contains("previousmonthannualctc")) 
-                                                    { 
+                                                    ex.Parameters["currentmonthtotaldays"] = Service1.GetCurrentMonthTotalDays();
+                                                    if (formula.Contains("previousmonthannualctc"))
+                                                    {
                                                         double ctc= Service1.GetPreviousMonthAnnualCTC(outputWorksheet.Cells[row2, 1].Text);
                                                         ex.Parameters["previousmonthannualctc"] = ctc;
                                                         if (ctc == 1)
@@ -241,36 +297,7 @@ namespace ExcelAutomationService
                                                             rowRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
                                                         }
                                                     }
-                                                    if (formula.Contains("previousmonthhbctc"))
-                                                    {
-                                                        double ctc = Service1.GetPreviousMonthHBCTC(outputWorksheet.Cells[row2, 1].Text);
-                                                        ex.Parameters["previousmonthhbctc"] = ctc;
-                                                        if (ctc == 1)
-                                                        {
-                                                            int targetRow = row2; // Example row
-                                                            var rowRange = outputWorksheet.Cells[targetRow, 1, targetRow, outputWorksheet.Dimension.End.Row];
-                                                            unitsnotfoundId.Add(outputWorksheet.Cells[row2, 1].Text);
-                                                            unitsnotfoundDesc.Add(outputWorksheet.Cells[1, column].Text);
-                                                            unitsnotfoundAmt.Add(outputWorksheet.Cells[row2, column].GetValue<double>());
-                                                            rowRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                                                            rowRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
-                                                        }
-                                                    }
-                                                    if (formula.Contains("previousmonthymediactc"))
-                                                    {
-                                                        double ctc = Service1.GetPreviousMonthymediaCTC(outputWorksheet.Cells[row2, 1].Text);
-                                                        ex.Parameters["previousmonthymediactc"] = ctc;
-                                                        if (ctc == 1)
-                                                        {
-                                                            int targetRow = row2; // Example row
-                                                            var rowRange = outputWorksheet.Cells[targetRow, 1, targetRow, outputWorksheet.Dimension.End.Row];
-                                                            unitsnotfoundId.Add(outputWorksheet.Cells[row2, 1].Text);
-                                                            unitsnotfoundDesc.Add(outputWorksheet.Cells[1, column].Text);
-                                                            unitsnotfoundAmt.Add(outputWorksheet.Cells[row2, column].GetValue<double>());
-                                                            rowRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                                                            rowRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
-                                                        }
-                                                    }
+                                                    
                                                     outputWorksheet.Cells[row2, column].Value = ex.Evaluate();
                                                 }
                                                 catch (Exception e)
@@ -281,45 +308,16 @@ namespace ExcelAutomationService
                                             }
                                         }
                                     }
-                                Service1.PathLog("check for encashment/holiday/Overtime/shift/extrahours is in units or amount in variable file.");
+                                
                                 
                                 // Define the range for the entire column
                                 var columnRange = outputWorksheet.Cells[1, column, OutputLastRow, column];
                                 // Apply fill color
-                                columnRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                                columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                                //columnRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                //columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
                                 }
-                            }
-                            if (containsEncashment && filePath.ToLower().Contains("twilio"))
-                            {
-                                int OutputLastRow = outputWorksheet.Dimension.End.Row;
-
-                                using (var newPackage = new ExcelPackage())
-                                {
-                                    var newWorksheet = newPackage.Workbook.Worksheets.Add("EncashmentData");
-
-                                    // Copy header
-                                    newWorksheet.Cells[1, 1].Value = outputWorksheet.Cells[1, 1].Value;
-                                    newWorksheet.Cells[1, 2].Value = outputWorksheet.Cells[1, column].Value;
-
-                                    // Copy data
-                                    for (int row = 2; row <= OutputLastRow; row++)
-                                    {
-                                        newWorksheet.Cells[row, 1].Value = outputWorksheet.Cells[row, 1].Value;
-                                        newWorksheet.Cells[row, 2].Value = outputWorksheet.Cells[row, column].Value;
-                                    }
-
-                                    // Optional: format
-                                    newWorksheet.Column(1).AutoFit();
-                                    newWorksheet.Column(2).AutoFit();
-
-                                    // Save file
-                                    string encashmentFilePath = Path.Combine(destinationFolder, $"Variable EncashmentData_{Path.GetFileName(filePath)}");
-                                    newPackage.SaveAs(new FileInfo(encashmentFilePath));
-                                    Service1.PathLog("Encashment data file created: " + encashmentFilePath);
-                                }
-                            }
                         }
+                       
                         if (unitsnotfoundId.Count != 0)
                         {
                             StringBuilder htmlTable = new StringBuilder();
@@ -341,7 +339,7 @@ namespace ExcelAutomationService
                             }
                             htmlTable.Append("</table>");
                             string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
-                            string body = "Below are employees which were not found in employee master for Units conversion.<br>Ensure that previous month employee master is pasted in Employee Master folder.<br> Kindly ignore if these are new joinners.<br><br>"+ htmlTable.ToString()+"<br>";
+                            string body = "Below are employees which were not found in employee master for Units conversion.<br>Ensure that previous month employee master is pasted in Employee Master folder.<br><br>"+ htmlTable.ToString()+"<br>";
                             if (Service1.subject == "")
                             {
                                 Service1.subject = subject;
@@ -353,6 +351,121 @@ namespace ExcelAutomationService
                         // Save output file
                         string newFileName = Path.Combine(destinationFolder,Service1.FileCount+ "]Variable_" + Path.GetFileName(filePath));
                         // outputPackage.SaveAs(new FileInfo(outputFilePath));
+                        FileInfo newFileInfo = new FileInfo(newFileName);
+                        outputWorksheet.Cells[outputWorksheet.Dimension.Address].AutoFitColumns();
+                        Service1.EmployeeMaster.Clear();
+                        string cellValue = outputWorksheet.Cells[2, 1].GetValue<string>();
+                        Service1.ShrinkString(cellValue);
+                        if ((cellValue != null) && (cellValue != " ") && (cellValue != " "))
+                        {
+                            outputPackage.SaveAs(newFileInfo);
+                            outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
+                            Service1.Log("Variable Created Successfully");
+                            Service1.FileCount++;
+                        }
+                        else
+                        {
+                            Service1.PathLog("no variable file created");
+                        }
+                    }
+                    if (checkforunits)
+                        Service1.PathLog("check for encashment/holiday/Overtime/shift/extrahours is in units or amount in variable file.");
+                }
+                Service1.Log($"Variable Excel file created successfully at {outputFilePath}!");
+            }
+            catch (Exception ex)
+            {
+                Service1.ErrorCount++;
+                Service1.Log($"An error occurred: {ex.Message}");
+            }
+        }
+        public static void AlterDomusCoupunsVariable(string ascendcodes, string filePath, string destinationFolder)
+        {
+            try
+            {
+                string outputFilePath = Path.Combine(destinationFolder, "Coupons_Variable_Pay_Summary.xlsx");
+                using (var package = new ExcelPackage(new FileInfo(filePath)))
+                {
+                    int IP = Service1.getSheetNumber(filePath, "Payments and Deductions");
+                    var inputWorkSheet = package.Workbook.Worksheets[IP];
+                    int lastRow = inputWorkSheet.Dimension.End.Row;
+                    // Get column numbers for relevant headers
+                    int hridCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "HR ID");
+                    int payElementCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Pay Element Short Code");
+                    int amountCol = Service1.getColumnNumber(filePath, inputWorkSheet.Name, "Amount");
+
+                    //Data structures to store unique pay elements and employee data
+                    var employeeData = new Dictionary<string, Dictionary<string, double>>();
+                    var payElementCodes = new HashSet<string>();
+                    HashSet<string> NewHrid = new HashSet<string>();
+                    // Read data from input sheet
+                    for (int row = 2; row <= lastRow; row++)
+                    {
+                        var cell = inputWorkSheet.Cells[row, hridCol];
+                        // Get the background color of the cell
+                        var bgColor = cell.Style.Fill.BackgroundColor;
+                        if(string.IsNullOrEmpty(bgColor.Rgb) || bgColor.Rgb.Equals("FFFFFF"))
+                        {
+                            NewHrid.Add(cell.Text);
+                        }
+                        string hrid = inputWorkSheet.Cells[row, hridCol].GetValue<string>();
+                        string payElement = inputWorkSheet.Cells[row, payElementCol].GetValue<string>();
+                        string amountText = inputWorkSheet.Cells[row, amountCol].GetValue<string>();
+                        double amount = double.TryParse(amountText, out var parsedAmount) ? parsedAmount : 0;
+                        // Add pay element to the set
+                        if (payElement.ToLower().Contains("meal")|| payElement.ToLower().Contains("fuel")) { 
+                        payElementCodes.Add(payElement);
+                        }
+                        // Add or update employee data
+                        if (!employeeData.ContainsKey(hrid))
+                        {
+                            employeeData[hrid] = new Dictionary<string, double>();
+                        }
+                        if (!employeeData[hrid].ContainsKey(payElement))
+                        {
+                            employeeData[hrid][payElement] = 0;
+                        }
+                        employeeData[hrid][payElement] += amount;
+                    }
+                    // Write the output file
+                    using (var outputPackage = new ExcelPackage())
+                    {
+                        var outputWorksheet = outputPackage.Workbook.Worksheets.Add("Summary");
+                        // Write headers
+                        outputWorksheet.Cells[1, 1].Value = "HR ID";
+                        int colIndex = 2;
+                        var payElementList = new List<string>(payElementCodes);
+                        foreach (var payElement in payElementList)
+                        {
+                            outputWorksheet.Cells[1, colIndex].Value = payElement;
+                            colIndex++;
+                        }
+                        // Write employee data
+                        int rowIndex = 2;
+                        foreach (var kvp in employeeData)
+                        {
+                            string hrid = kvp.Key;
+                            outputWorksheet.Cells[rowIndex, 1].Value = hrid;
+
+                            for (int i = 0; i < payElementList.Count; i++)
+                            {
+                                string payElement = payElementList[i];
+                                double amount = kvp.Value.ContainsKey(payElement) ? kvp.Value[payElement] : 0;
+                                outputWorksheet.Cells[rowIndex, i + 2].Value = amount;
+                            }
+                            rowIndex++;
+                        }
+                        int endRow = outputWorksheet.Dimension.End.Row;
+                        for (int row=endRow;row>=2;row--) 
+                        {
+                            if (outputWorksheet.Cells[row, 2].Text == "0"&& outputWorksheet.Cells[row, 3].Text == "0")
+                            {
+                                outputWorksheet.DeleteRow(row);
+                            }
+                        }
+                        // Save output file
+                        string newFileName = Path.Combine(destinationFolder, Service1.FileCount + "]AlterFuelCTCVariable_" + Path.GetFileName(filePath));
+                         //outputPackage.SaveAs(new FileInfo(outputFilePath));
                         FileInfo newFileInfo = new FileInfo(newFileName);
                         outputWorksheet.Cells[outputWorksheet.Dimension.Address].AutoFitColumns();
                         Service1.EmployeeMaster.Clear();

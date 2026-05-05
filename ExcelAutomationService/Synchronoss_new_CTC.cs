@@ -263,7 +263,7 @@ namespace ExcelAutomationService
                             var cell2 = inputWorkSheet.Cells[row, enddate];
                             var bgColor2 = cell2.Style.Fill.BackgroundColor;
                             var bgColor = cell.Style.Fill.BackgroundColor;
-                            if ((string.IsNullOrEmpty(bgColor.Rgb) || bgColor.Rgb.Equals("FFFFFF")) && inputWorkSheet.Cells[row, enddate].Text != "")
+                            if ((string.IsNullOrEmpty(bgColor.Rgb) || bgColor.Rgb.Equals("FFFFFF")) && Service1.ShrinkString(inputWorkSheet.Cells[row, enddate].Text) != "")
                             {
                                 HRID.Add(inputWorkSheet.Cells[row, hrid].GetValue<string>());
                             }

@@ -3,20 +3,27 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net.Mail;
 using System.Net;
+using System.Net.Mail;
+using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Xml.Linq;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using HtmlToOpenXml;
 using Microsoft.Office.Interop.Excel;
 using OfficeOpenXml;
-using Timer = System.Timers.Timer;
+using OfficeOpenXml.Drawing;
 using OfficeOpenXml.Utils;
-using System.Runtime.InteropServices;
-using System.Xml.Linq;
+using Timer = System.Timers.Timer;
 
 namespace ExcelAutomationService
 {
@@ -36,6 +43,7 @@ namespace ExcelAutomationService
         public static string ctcfolder = @"E:/PAYROLL_SERVER/Automation/output";
         public static string MinimumWagesAct = @"E:/PAYROLL_SERVER/Automation/output/Minimum Wages Act/";
         public static string employeemaster = @"E:/PAYROLL_SERVER/Automation/output";
+        public static string payrollInputFile = "";
         string destinationFolder = @"E:/PAYROLL_SERVER/Automation/output";
         string ascendcodes = "E:/PAYROLL_SERVER/Automation/Twilio_Twilio Technology/Automation_Ascent_Codes/Ascent Codes.xlsx";
         public static string subject = "";
@@ -214,6 +222,7 @@ namespace ExcelAutomationService
                     {
                         string temp = inputWorkSheet.Cells[1, col].Text.ToLower();
                         temp = temp.Replace(" ", "");
+                        temp = temp.Replace("partner","");//this is done because of descrepency in some variable columns.
                         if (columnname.Equals(temp))
                         {
                             return col; // Return the column number if the header matches
@@ -313,7 +322,7 @@ namespace ExcelAutomationService
             ifsc = ifsc.Replace(" ", "");
             if (ifsc.Length == 0)
             {
-                PathLog(hrid+" IFSC code is not given in " + sheetname + " sheet.");
+                //PathLog(hrid+" IFSC code is not given in " + sheetname + " sheet.");
                 return "";
             }
             if (ifsc.Length == 11)
@@ -490,89 +499,150 @@ namespace ExcelAutomationService
                 Console.WriteLine($"Directory not found: {employeemaster}");
             }
         }
-
-        public static double GetPreviousMonthHBCTC(string empid){
-            if (Directory.Exists(employeemaster))
-            {
-                string[] referencefile = Directory.GetFiles((employeemaster), "*.xlsx");
-                string empmaster = employeemaster + Path.GetFileName(referencefile[0]);
-                using (var package = new ExcelPackage(new FileInfo(empmaster)))
-                {
-                    var CTCMaster = package.Workbook.Worksheets[0];
-                    int empno = getColumnNumber(empmaster, CTCMaster.ToString(), "EmpNo");
-                    int annualCTC = getColumnNumber(empmaster, CTCMaster.ToString(), "CTC");
-                    int basic = getColumnNumber(empmaster, CTCMaster.ToString(), "001 Basic");
-                    int hra = getColumnNumber(empmaster, CTCMaster.ToString(), "002 House Rental Allowance");
-                    int lta = getColumnNumber(empmaster, CTCMaster.ToString(), "006 Leave Travel Allowance ");
-                    int special = getColumnNumber(empmaster, CTCMaster.ToString(), "003 Special Allowance");
-                    int conveyance = getColumnNumber(empmaster, CTCMaster.ToString(), "004 Conveyance Allowance ");
-                    int medical = getColumnNumber(empmaster, CTCMaster.ToString(), "005 Medical Allowance ");
-                    int endrow = CTCMaster.Dimension.End.Row;
-                    for (int row = 2; row <= endrow; row++)
-                    {
-                        if (CTCMaster.Cells[row, empno].Text == empid)
-                        {
-                            return CTCMaster.Cells[row, basic].GetValue<double>()+ CTCMaster.Cells[row, hra].GetValue<double>()+ CTCMaster.Cells[row, lta].GetValue<double>()+ CTCMaster.Cells[row, conveyance].GetValue<double>()+ CTCMaster.Cells[row, medical].GetValue<double>()+ CTCMaster.Cells[row, special].GetValue<double>();
-                        }
-                    }
-                }
-            }
-            PathLog("HRID:" + empid + " does not exist in employee master for units conversion. Kindly ensure that correct employee master is pasted in Employee Master folder.");
-            return 1;
-        }
-        public static double GetPreviousMonthymediaCTC(string empid)
+        public static void GetDOBAlert(string filePath)
         {
-            if (Directory.Exists(employeemaster))
+            using (var package = new ExcelPackage(new FileInfo(filePath)))
             {
-                string[] referencefile = Directory.GetFiles((employeemaster), "*.xlsx");
-                string empmaster = employeemaster + Path.GetFileName(referencefile[0]);
-                using (var package = new ExcelPackage(new FileInfo(empmaster)))
+                int IP = getSheetNumber(filePath, "Joiner and Changes");
+                var CTCWorkSheet = package.Workbook.Worksheets[IP];// Assuming the data is in the first worksheet
+                int lastRow = CTCWorkSheet.Dimension.End.Row;
+                List<string> CautionId = new List<string>();
+                List<string> CautionDate = new List<string>();
+                int hridCol = getColumnNumber(filePath, CTCWorkSheet.Name, "HR ID");
+                int dobcol = getColumnNumber(filePath, CTCWorkSheet.Name, "Date of Birth");
+                DateTime currentDate = DateTime.Now;
+                for (int row = 2; row <= lastRow; row++)
                 {
-                    var CTCMaster = package.Workbook.Worksheets[0];
-                    int empno = getColumnNumber(empmaster, CTCMaster.ToString(), "EmpNo");
-                    int annualCTC = getColumnNumber(empmaster, CTCMaster.ToString(), "CTC");
-                    int basic = getColumnNumber(empmaster, CTCMaster.ToString(), "001 Basic");
-                    int hra = getColumnNumber(empmaster, CTCMaster.ToString(), "002 HRA");
-                    int lta = getColumnNumber(empmaster, CTCMaster.ToString(), "003 LTA");
-                    int tele = getColumnNumber(empmaster, CTCMaster.ToString(), "004 Tele & Internet Allowance");
-                    int meal = getColumnNumber(empmaster, CTCMaster.ToString(), "005 Allowance Meal");
-                    int other = getColumnNumber(empmaster, CTCMaster.ToString(), "006 Allowance Other");
-                    int pf = getColumnNumber(empmaster, CTCMaster.ToString(), "007 Employer PF");
-                    int endrow = CTCMaster.Dimension.End.Row;
-                    for (int row = 2; row <= endrow; row++)
+                    string dobString = ShrinkString(CTCWorkSheet.Cells[row, dobcol].Text);
+                    if (dobString != "")
                     {
-                        if (CTCMaster.Cells[row, empno].Text == empid)
+                        DateTime dob;
+                        if (DateTime.TryParseExact(dobString, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out dob))
                         {
-                            return CTCMaster.Cells[row, basic].GetValue<double>() + CTCMaster.Cells[row, hra].GetValue<double>() + CTCMaster.Cells[row, lta].GetValue<double>() + CTCMaster.Cells[row, tele].GetValue<double>() + CTCMaster.Cells[row, meal].GetValue<double>() + CTCMaster.Cells[row, other].GetValue<double>() + CTCMaster.Cells[row, pf].GetValue<double>();
+                            // Check if the employee's age is less than 18 years
+                            int age = currentDate.Year - dob.Year;
+                            if (currentDate.Month < dob.Month || (currentDate.Month == dob.Month && currentDate.Day < dob.Day))
+                            {
+                                age--;
+                            }
+
+                            if (age < 18)
+                            {
+                                CautionId.Add(CTCWorkSheet.Cells[row, hridCol].Text);
+                                CautionDate.Add(dobString);
+                            }
                         }
                     }
                 }
+                if (CautionId.Count != 0)
+                {
+                    StringBuilder htmlTable = new StringBuilder();
+                    htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
+                    // Add table headers
+                    htmlTable.Append("<tr>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>HRID</th>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>Date of Birth</th>");
+                    htmlTable.Append("</tr>");
+                    PathLog("Below are the Suspicious Date of births of Joiner and Chnages sheet:");
+                    // Add table rows
+                    for (int row8 = 0; row8 <= CautionId.Count - 1; row8++)
+                    {
+                        Service1.PathLog("HRID:" + CautionId[row8] + " Dob:" + CautionDate[row8]);
+                        htmlTable.Append("<tr>");
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionId[row8]);
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionDate[row8]);
+                        htmlTable.Append("</tr>");
+                    }
+                    htmlTable.Append("</table>");
+                    string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                    string body = "Below are the Suspicious Date of Births of employees of Client:" + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                    if (Service1.subject == "")
+                    {
+                        Service1.subject = subject;
+                    }
+                    Service1.body = Service1.body + body;
+                }
             }
-            PathLog("HRID:" + empid + " does not exist in employee master for units conversion. Kindly ensure that correct employee master is pasted in Employee Master folder.");
-            return 1;
         }
-        //public static double GetPreviousMonthAnnualCTC(string empid){
-        //    if (Directory.Exists(employeemaster))
-        //    {
-        //        string[] referencefile = Directory.GetFiles((employeemaster), "*.xlsx");
-        //        string empmaster = employeemaster + Path.GetFileName(referencefile[0]);
-        //        using (var package = new ExcelPackage(new FileInfo(empmaster)))
-        //        {
-        //            var CTCMaster = package.Workbook.Worksheets[0];
-        //            int empno = getColumnNumber(empmaster, CTCMaster.ToString(), "EmpNo");
-        //            int annualCTC= getColumnNumber(empmaster, CTCMaster.ToString(), "CTC");
-        //            int endrow = CTCMaster.Dimension.End.Row;
-        //            for (int row=2;row<=endrow;row++){
-        //                if (CTCMaster.Cells[row,empno].Text==empid)
-        //                {
-        //                    return CTCMaster.Cells[row,annualCTC].GetValue<double>();
-        //                }
-        //            }
-        //        }
-        //    }
-        //    PathLog("HRID:"+empid+" does not exist in employee master for units conversion. Kindly ensure that correct employee master is pasted in Employee Master folder.");
-        //    return 1;
-        //}
+        public static void GetDOJMismatchAlert(string filePath)
+        {
+            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            {
+                int IP = getSheetNumber(filePath, "Joiner and Changes");
+                var JoinerandchangesSheet = package.Workbook.Worksheets[IP];// Assuming the data is in the first worksheet
+                int lastRow = JoinerandchangesSheet.Dimension.End.Row;
+                Dictionary<string, string> EmpData = new Dictionary<string, string>();
+                List<string> CautionId = new List<string>();
+                List<string> CautionNewJoinerDoj = new List<string>();
+                List<string> CautionPaymentsandDeductionDoj = new List<string>();
+                int hridCol = getColumnNumber(filePath, JoinerandchangesSheet.Name, "HR ID");
+                int dojCol = getColumnNumber(filePath, JoinerandchangesSheet.Name, "Payroll Start Date");
+                DateTime currentDate = DateTime.Now;
+                for (int row = 2; row <= lastRow; row++)
+                {
+                    var cell = JoinerandchangesSheet.Cells[row, hridCol];
+                    var bgColor = cell.Style.Fill.BackgroundColor;
+                    if (!string.IsNullOrEmpty(bgColor.Rgb) && !bgColor.Rgb.Equals("FFFFFF"))
+                    {
+                        string dojString = ShrinkString(JoinerandchangesSheet.Cells[row, dojCol].Text);
+                        if (dojString != "")
+                        {
+                            EmpData.Add(JoinerandchangesSheet.Cells[row, hridCol].Text, dojString);
+                        }
+                    }
+                }
+                IP = getSheetNumber(filePath, "Payments and Deductions");
+                var PaymentsandDeducionsSheet = package.Workbook.Worksheets[IP];// Assuming the data is in the first worksheet
+                lastRow = PaymentsandDeducionsSheet.Dimension.End.Row;
+                hridCol = getColumnNumber(filePath, PaymentsandDeducionsSheet.Name, "HR ID");
+                dojCol = getColumnNumber(filePath, PaymentsandDeducionsSheet.Name, "Start Date");
+                for (int row = 2; row <= lastRow; row++)
+                {
+                    string hrid = PaymentsandDeducionsSheet.Cells[row, hridCol].Text;
+                    string doj = PaymentsandDeducionsSheet.Cells[row, dojCol].Text;
+                    if (EmpData.ContainsKey(hrid)){
+                        if (EmpData[hrid] != doj)
+                        {
+                            if (!CautionId.Contains(hrid))
+                            {
+                                CautionId.Add(hrid);
+                                CautionNewJoinerDoj.Add(EmpData[hrid]);
+                                CautionPaymentsandDeductionDoj.Add(doj);
+                            }
+                        }
+                    }
+                }
+                if (CautionId.Count != 0)
+                {
+                    StringBuilder htmlTable = new StringBuilder();
+                    htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
+                    // Add table headers
+                    htmlTable.Append("<tr>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>HRID</th>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>DOJ in Joiner & Changes</th>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>DOJ in Payments & Deduction</th>");
+                    htmlTable.Append("</tr>");
+                   
+                    // Add table rows
+                    for (int row8 = 0; row8 <= CautionId.Count - 1; row8++)
+                    {
+                        htmlTable.Append("<tr>");
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionId[row8]);
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionNewJoinerDoj[row8]);
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionPaymentsandDeductionDoj[row8]);
+                        htmlTable.Append("</tr>");
+                    }
+                    htmlTable.Append("</table>");
+                    string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                    string body = "Kindly review the Date of Joinings of new joiners of Client:" + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                    if (Service1.subject == "")
+                    {
+                        Service1.subject = subject;
+                    }
+                    Service1.body = Service1.body + body;
+                }
+            }
+        }
         public static void GetCtcAdditionalCommentAlert(string filePath)
         {
             using (var package = new ExcelPackage(new FileInfo(filePath)))
@@ -590,7 +660,8 @@ namespace ExcelAutomationService
                 int commentcol = getColumnNumber(filePath, CTCWorkSheet.Name, "Additional Comment");
                 for (int row = 2; row <= lastRow; row++)
                 {
-                    if (ShrinkString(CTCWorkSheet.Cells[row,commentcol].Text)!="" && !ShrinkString(CTCWorkSheet.Cells[row, commentcol].Text).Contains("recurring"))
+                    var commentText = CTCWorkSheet.Cells[row, commentcol].Text;
+                    if (ShrinkString(CTCWorkSheet.Cells[row,commentcol].Text)!="" && !CautionComment.Contains(commentText))
                     {
                         CautionId.Add(CTCWorkSheet.Cells[row, hridCol].Text);
                         CautionDesc.Add(CTCWorkSheet.Cells[row, payElementCol].Text);
@@ -609,7 +680,7 @@ namespace ExcelAutomationService
                     htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>Amount</th>");
                     htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>Additional Comment</th>");
                     htmlTable.Append("</tr>");
-                    Service1.PathLog("Below are the Additional comments of Payments and Deductions sheet:");
+                    PathLog("Below are the Additional comments of Payments and Deductions sheet:");
                     // Add table rows
                     for (int row8 = 0; row8 <= CautionId.Count - 1; row8++)
                     {
@@ -631,6 +702,148 @@ namespace ExcelAutomationService
                     Service1.body = Service1.body + body;
                 }
             }
+        }
+        public static void GetAlterCouponAlert(string filePath)
+        {
+            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            {
+                int IP = getSheetNumber(filePath, "Payments and Deductions");
+                var CTCWorkSheet = package.Workbook.Worksheets[IP];// Assuming the data is in the first worksheet
+                int lastRow = CTCWorkSheet.Dimension.End.Row;
+                //HashSet<string> EmpId = new HashSet<string>();
+                List<string> EmpId = new List<string>();
+                List<string> CautionId = new List<string>();
+                List<string> CautionDesc = new List<string>();
+                List<string> CautionCode = new List<string>();
+                List<double> CautionAmt = new List<double>();
+                int hridCol = getColumnNumber(filePath, CTCWorkSheet.Name, "HR ID");
+                int payElementCol = getColumnNumber(filePath, CTCWorkSheet.Name, "Pay Element Short Code");
+                int amountCol = getColumnNumber(filePath, CTCWorkSheet.Name, "Amount");
+                int commentcol = getColumnNumber(filePath, CTCWorkSheet.Name, "Additional Comment");
+                for (int row = 2; row <= lastRow; row++)
+                {
+                    var cell = CTCWorkSheet.Cells[row, hridCol];
+                    // Get the background color of the cell
+                    var bgColor = cell.Style.Fill.BackgroundColor;
+                    if (string.IsNullOrEmpty(bgColor.Rgb) || bgColor.Rgb.Equals("FFFFFF"))
+                    {
+                        if (CTCWorkSheet.Cells[row, payElementCol].Text.Contains("Meal"))
+                        {
+
+                            if (!EmpId.Contains(CTCWorkSheet.Cells[row, hridCol].Text))
+                            {
+                                EmpId.Add(CTCWorkSheet.Cells[row, hridCol].Text);
+                            }
+                            else
+                            {
+                                CautionId.Add(CTCWorkSheet.Cells[row, hridCol].Text);
+                                CautionCode.Add(CTCWorkSheet.Cells[row, payElementCol].Text);
+                                CautionAmt.Add(CTCWorkSheet.Cells[row, amountCol].GetValue<double>());
+                            }
+                        }
+                    }
+                }
+                EmpId.Clear();
+                for (int row = 2; row <= lastRow; row++)
+                {
+                    var cell = CTCWorkSheet.Cells[row, hridCol];
+                    // Get the background color of the cell
+                    var bgColor = cell.Style.Fill.BackgroundColor;
+                    if (string.IsNullOrEmpty(bgColor.Rgb) || bgColor.Rgb.Equals("FFFFFF"))
+                    {
+                        if (CTCWorkSheet.Cells[row, payElementCol].Text.Contains("Fuel"))
+                        {
+                            if (!EmpId.Contains(CTCWorkSheet.Cells[row, hridCol].Text))
+                            {
+                                EmpId.Add(CTCWorkSheet.Cells[row, hridCol].Text);
+                            }
+                            else
+                            {
+                                CautionId.Add(CTCWorkSheet.Cells[row, hridCol].Text);
+                                CautionCode.Add(CTCWorkSheet.Cells[row, payElementCol].Text);
+                                CautionAmt.Add(CTCWorkSheet.Cells[row, amountCol].GetValue<double>());
+                            }
+                        }
+                    }
+                }
+                EmpId.Clear();
+                if (CautionId.Count != 0)
+                {
+                    StringBuilder htmlTable = new StringBuilder();
+                    htmlTable.Append("<table border='1' style='border-collapse: collapse;'>");
+                    // Add table headers
+                    htmlTable.Append("<tr>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>HRID</th>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>PayElement Code</th>");
+                    htmlTable.Append("<th style='background-color:lightgray;padding:5px;'>Amount</th>");
+                    htmlTable.Append("</tr>");
+                    //PathLog("Kindly review these employees which have repeated coupon");
+                    // Add table rows
+                    for (int row8 = 0; row8 <= CautionId.Count - 1; row8++)
+                    {
+                        htmlTable.Append("<tr>");
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionId[row8]);
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionCode[row8]);
+                        htmlTable.AppendFormat("<td style='padding:5px;'>{0}</td>", CautionAmt[row8].ToString("N2"));
+                        htmlTable.Append("</tr>");
+                    }
+                    htmlTable.Append("</table>");
+                    string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alert";
+                    string body = "Kindly review the Pay element codes which are repeated for some employees of Client:" + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString() + "<br>";
+                    if (Service1.subject == "")
+                    {
+                        Service1.subject = subject;
+                    }
+                    Service1.body = Service1.body + body;
+                }
+                else 
+                {
+                    PathLog("No employee found which has repeated coupon");
+                }
+            }
+        }
+        public static string ReplaceAmountPlaceholders(string formula, string empId)
+        {
+            PathLog(formula);
+            if (string.IsNullOrWhiteSpace(formula) || !formula.Contains("amount("))
+                return formula;
+
+            var matches = Regex.Matches(formula, @"amount\((.*?)\)");
+
+            foreach (Match match in matches)
+            {
+                string fullMatch = match.Value;                 // e.g., amount(001 Basic Salary)
+                string innerKey = match.Groups[1].Value.Trim(); // e.g., 001 Basic Salary
+                string replacementValue = "0";                  // default fallback
+
+                if (EmployeeMaster != null && EmployeeMaster.ContainsKey(empId))
+                {
+                    var innerDict = EmployeeMaster[empId];
+
+                    if (innerDict.ContainsKey(innerKey))
+                    {
+                        replacementValue = innerDict[innerKey];
+
+                        if (!double.TryParse(replacementValue, out _))
+                        {
+                            PathLog($"HRID: {empId} has invalid numeric value '{replacementValue}' for key '{innerKey}'.");
+                            replacementValue = "0";
+                        }
+                    }
+                    else
+                    {
+                        PathLog($"HRID: {empId} does not contain key '{innerKey}' in EmployeeMaster.");
+                    }
+                }
+                else
+                {
+                    PathLog($"HRID: {empId} not found in EmployeeMaster.");
+                }
+
+                formula = formula.Replace(fullMatch, replacementValue);
+            }
+            PathLog(formula);
+            return formula;
         }
         public static double GetPreviousMonthAnnualCTC(string empid)
         {
@@ -662,32 +875,62 @@ namespace ExcelAutomationService
             PathLog("HRID: " + empid + " does not exist in employee master for units conversion. Kindly ensure that correct previous month employee master is loaded.");
             return 1;
         }
+        public static (int year, int month) ExtractYearMonthFromFileName(string fileName)
+        {
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+            string[] parts = nameWithoutExtension.Split('_');
+
+            // Find index of "Payroll_Data"
+            int payrollIndex = Array.FindIndex(parts, p => p.Equals("Payroll", StringComparison.OrdinalIgnoreCase));
+
+            if (payrollIndex < 2)
+                throw new Exception("Invalid file name format");
+
+            // Date is just before "Payroll"
+            string datePart = parts[payrollIndex - 1];
+
+            // Month is before date
+            string monthName = parts[payrollIndex - 2];
+
+            int year = int.Parse(datePart.Substring(0, 4));
+
+            int month = DateTime.ParseExact(
+                monthName,
+                "MMMM",
+                System.Globalization.CultureInfo.InvariantCulture
+            ).Month;
+
+            return (year, month);
+        }
+        public static int GetCurrentMonthTotalDays()
+        {
+            var (year, month) = ExtractYearMonthFromFileName(Path.GetFileName(payrollInputFile));
+            //Program.currentmonthdays = DateTime.DaysInMonth(year, month);
+            return DateTime.DaysInMonth(year, month);
+        }
         public static int GetPreviousMonthTotalDays()
         {
-            DateTime today = DateTime.Today;
+            var (year, month) = ExtractYearMonthFromFileName(Path.GetFileName(payrollInputFile));
 
-            // Move to the previous month
-            int year = today.Month == 1 ? today.Year - 1 : today.Year;
-            int month = today.Month == 1 ? 12 : today.Month - 1;
-
-            // Get total days in that month
-            int daysInPreviousMonth = DateTime.DaysInMonth(year, month);
-
-            return daysInPreviousMonth;
-        }
-
-        public static void GetPlateCtcClients()
-        {
-            string Alerts = @"E:\PAYROLL_SERVER\Automation\Config\CTC_Breakup_By_Client.txt";
-            if (File.Exists(Alerts))
+            if (month == 1)
             {
-                CtcClients = File.ReadAllLines(Alerts);
+                month = 12;
+                year -= 1;
             }
+            else
+            {
+                month -= 1;
+            }
+            //Program.previousmonthdays=DateTime.DaysInMonth(year, month);
+            return DateTime.DaysInMonth(year, month);
         }
+
+
         public static async Task ProcessFile(string ascendcodes, string filePath, string destinationFolder)
         {
             try
             {
+                payrollInputFile = "";
                 subject = "";
                 body = "";
                 GetAlertmails();
@@ -768,12 +1011,25 @@ namespace ExcelAutomationService
                     }
                 }
                 Log("File detected:"+ Path.GetFileName(filePath));
-                // Call the relevant methods to process the file
+                payrollInputFile = filePath;
                 New_Joinee_Master.NewJoinee_Master(ascendcodes, filePath, destinationFolder);
                 Rehire_Master.rehire_Master(ascendcodes, filePath, destinationFolder);
                 if (filePath.ToLower().Contains("synchronoss"))
                 {
-                    Synchronoss_new_CTC.CTC_Master(ascendcodes, filePath, destinationFolder);
+                    //Synchronoss_new_CTC.CTC_Master(ascendcodes, filePath, destinationFolder);
+                }
+                if (filePath.ToLower().Contains("alter"))
+                {
+                    GetAlterCouponAlert(filePath);
+                    Variable.AlterDomusCoupunsVariable(ascendcodes, filePath, destinationFolder);
+                }
+                if (filePath.ToLower().Contains("mcafee"))
+                {
+                    McAfee_CTC.CTC_Master(ascendcodes, filePath, destinationFolder);
+                }
+                if (filePath.ToLower().Contains("musarubra"))
+                {
+                    Musarubra_CTC.CTC_Master(ascendcodes, filePath, destinationFolder);
                 }
                 if (Directory.Exists(ctcfolder))
                 {
@@ -781,41 +1037,45 @@ namespace ExcelAutomationService
                     string ctccodes = ctcfolder + Path.GetFileName(referencefile[0]);
                     //string copypath = @"E:\PAYROLL_SERVER\Automation\Config\" +"1"+ "temp.xlsx";
                     MasterCTC.CTC_Master(ctccodes, filePath, destinationFolder);
-                    //InternCTC.CTC_Master(ctccodes, filePath, destinationFolder);
+                    InternCTC.CTC_Master(ctccodes, filePath, destinationFolder);
+                    TraineeCTC.CTC_Master(ctccodes, filePath, destinationFolder);
                 }
                 Existing_Changes_Master.Existing_changes_Master(ascendcodes, filePath, destinationFolder);
                 Benefeciaries_Data.Beneficiaries_Data(ascendcodes, filePath, destinationFolder);
                 Variable.Variable_Pay_Inputs_Data(ascendcodes, filePath, destinationFolder);
                 Leaver_Master.LeaverMaster(ascendcodes, filePath, destinationFolder);
                 GetCtcAdditionalCommentAlert(filePath);
+                GetDOBAlert(filePath);
+                GetDOJMismatchAlert(filePath);
                 EmployeeMaster.Clear();
-                //await Task.Run(() => Joiner_Leaver_Master.JoinerLeaverMaster(ascendcodes, filePath, destinationFolder));
-                //await Task.Run(() => CTC_new_joiner.CTC_Master(ascendcodes, filePath, destinationFolder));
                 if (subject != "")
                 {
-                    SendEmails(recipients, subject,body+ "Please take necessary actions.<br><br> Regards,<br> Automation Team");
+                    SendEmails(recipients, subject, body+ "Please take necessary actions.<br><br> Regards,<br> Automation Team");
+                    string wordFileName = Path.Combine(destinationFolder,Service1.FileCount 
+                        + "]DO READ THIS & ACTION!!!" + ".docx");
+                    SaveBodyToWord(body, wordFileName);
                 }
                 //action after processing
                 FileCount = 1;//Setting Back File Count to 1 for new file!!!
-                using (var package = new ExcelPackage(new FileInfo(ascendcodes)))
-                {
-                    int n = getSheetNumber(ascendcodes, "P.F. Registration Code");
-                    var PfSheet = package.Workbook.Worksheets[n];
-                    string pp = PfSheet.Cells[2, 3].GetValue<string>();
-                    if (ShrinkString(pp) != "")
-                    {
-                        try
-                        {
-                            StartProcessAsUser(@""+pp);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log($"Error opening file: {ex.Message}");
-                            File.Delete(filePath);
-                        }
-                    }
-                    else 
-                    {
+                //using (var package = new ExcelPackage(new FileInfo(ascendcodes)))
+                //{
+                    //int n = getSheetNumber(ascendcodes, "P.F. Registration Code");
+                    //var PfSheet = package.Workbook.Worksheets[n];
+                    //string pp = PfSheet.Cells[2, 3].GetValue<string>();
+                    //if (ShrinkString(pp) != "")
+                    //{
+                    //    //try
+                    //    //{
+                    //    //    StartProcessAsUser(@""+pp);
+                    //    //}
+                    //    //catch (Exception ex)
+                    //    //{
+                    //    //    Log($"Error opening file: {ex.Message}");
+                    //    //    File.Delete(filePath);
+                    //    //}
+                    //}
+                    //else 
+                    //{
                         if (!Directory.Exists(archived))
                         {
                             Directory.CreateDirectory(archived);
@@ -852,8 +1112,8 @@ namespace ExcelAutomationService
                         }
                         //File.Delete(destPath);
                         Log($"Processed file: {Path.GetFileName(filePath)}\n\n");
-                    }
-                }
+                    //}
+                //}
                 
             }
             catch (Exception ex)
@@ -870,6 +1130,47 @@ namespace ExcelAutomationService
             string subject = "Service Stopeed";
             string body = "PayrollAutomation service was stopped at:"+ $"{DateTime.Now}"+ "\n\nRegards,\nEmailService";
             //SendEmails(recipients, subject, body);
+        }
+        private static void SaveBodyToWord(string htmlBody, string outputPath)
+        {
+            // Step 1: Write directly to file (NOT MemoryStream - avoids flush issues)
+            using (WordprocessingDocument wordDoc = WordprocessingDocument.Create(
+                outputPath, WordprocessingDocumentType.Document))
+            {
+                // Step 2: Add and fully initialize the main document part
+                MainDocumentPart mainPart = wordDoc.AddMainDocumentPart();
+
+                // Step 3: CRITICAL - Create a complete, valid document skeleton first
+                mainPart.Document = new Document(
+                    new Body(
+                        new Paragraph(new Run(new Text(""))) // placeholder, required
+                    )
+                );
+
+                // Step 4: Convert HTML to OpenXml
+                HtmlConverter converter = new HtmlConverter(mainPart);
+
+                // Step 5: Clean up common HTML email issues before parsing
+                string cleanHtml = htmlBody
+                    .Replace("&nbsp;", " ")
+                    .Replace("\r\n", " ")
+                    .Replace("\n", " ");
+
+                converter.ParseHtml(cleanHtml);
+
+                // Step 6: CRITICAL - Ensure body has at least one paragraph (Word requires this)
+                Body body = mainPart.Document.Body;
+                if (!(body.LastChild is Paragraph))
+                {
+                    body.AppendChild(new Paragraph());
+                }
+
+
+                // Step 7: Save explicitly before closing
+                mainPart.Document.Save();
+
+                // wordDoc.Dispose() is called here by 'using' — file is complete
+            }
         }
         public static void Log(string message)
         {

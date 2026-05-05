@@ -22,12 +22,8 @@ namespace ExcelAutomationService
                 using (var package = new ExcelPackage(new FileInfo(filePath)))
                 {
                     int row, row2;
-
                     int IP = Service1.getSheetNumber(filePath, "Joiner and Changes ");
                     var inputWorkSheet = package.Workbook.Worksheets[IP];
-
-                    //var OrgAssignmentsDataSheet = package.Workbook.Worksheets["Org Assignments"];
-                    //int OrgAssignmentsDataSheetLastRow = OrgAssignmentsDataSheet.Dimension.End.Row;
                     int employeenumber = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "HR ID");
                     int EventType = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Event Type");
                     int Aadhar = Service1.getColumnNumber(filePath, inputWorkSheet.ToString(), "Aadhaar Card Number");
@@ -80,6 +76,7 @@ namespace ExcelAutomationService
                         int primarynameasperbank = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "Beneficiary Name");
                         int bfbankname = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "Bank Name");
                         int bfifsc = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "Sort Code");
+                        int bfbicswift = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "BIC / SWIFT");
                         int bfacno = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "Account Number");
                         int bfhrid = Service1.getColumnNumber(filePath, BenefeciariesDataSheet.ToString(), "HR ID");
                         int bflastrow = BenefeciariesDataSheet.Dimension.End.Row;
@@ -91,6 +88,7 @@ namespace ExcelAutomationService
                                 empData.Add("Beneficiary Name", BenefeciariesDataSheet.Cells[row, primarynameasperbank].Text);
                                 empData.Add("Account Number", BenefeciariesDataSheet.Cells[row, bfacno].Text);
                                 empData.Add("Sort Code", Service1.ValidateIFSC(BenefeciariesDataSheet.ToString(), BenefeciariesDataSheet.Cells[row, bfhrid].Text, BenefeciariesDataSheet.Cells[row, bfifsc].Text));
+                                empData.Add("BIC / SWIFT", Service1.ValidateIFSC(BenefeciariesDataSheet.ToString(), BenefeciariesDataSheet.Cells[row, bfhrid].Text, BenefeciariesDataSheet.Cells[row, bfbicswift].Text));
                                 string bankname = BenefeciariesDataSheet.Cells[row, bfbankname].Text;
                                 bankname = Service1.ShrinkString(bankname);
                                 bankname = bankname.Replace("ltd", "");
@@ -237,6 +235,8 @@ namespace ExcelAutomationService
                         outputWorksheet.Cells[1, 116].Value = "Probation End Date (YYYY-MM-DD)";
                         int row7 = 2;
                         Dictionary<string, string> AscentLocations = new Dictionary<string, string>();
+                        Dictionary<string, string> AscentPayrollCodeLocations = new Dictionary<string, string>();
+                        Dictionary<string, string> AscentPFCodeLocations = new Dictionary<string, string>();
                         Dictionary<string, string> AscentGrades = new Dictionary<string, string>();
                         Dictionary<string, string> AscentBanksDetailed = new Dictionary<string, string>();
                        
@@ -244,12 +244,15 @@ namespace ExcelAutomationService
                         {
                             var pfsheet= package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "P.F. Registration Code")];
                             pfregistrationcode = pfsheet.Cells[2, 2].Text;
+                            var payrollcodesheet= package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Payroll Code")];
                             var OccupationsSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Occupations")];
                             OccupationsCode = OccupationsSheet.Cells[2, 1].Text;
                             var CategoriesSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Categories")];
                             CategoriesCode = CategoriesSheet.Cells[2, 1].Text;
                             var LocationSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Locations")];
                             int LocationsLastRow = LocationSheet.Dimension.End.Row;
+                            int PayrollCodeLastRow = payrollcodesheet.Dimension.End.Row;
+                            int PFSheetLastRow = pfsheet.Dimension.End.Row;
                             int description = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "description");
                             int code = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "code");
 
@@ -257,6 +260,16 @@ namespace ExcelAutomationService
                             {
                                 if (!AscentLocations.ContainsKey(Service1.ShrinkString(LocationSheet.Cells[row3, description].Text)) && LocationSheet.Cells[row3, description].Text != "")
                                     AscentLocations.Add(Service1.ShrinkString( LocationSheet.Cells[row3, description].Text), LocationSheet.Cells[row3, code].Text);
+                            }
+                            for (int row3 = 2; row3 <= PFSheetLastRow; row3++)
+                            {
+                                if (!AscentPFCodeLocations.ContainsKey(Service1.ShrinkString(pfsheet.Cells[row3, 1].Text)) && pfsheet.Cells[row3, 1].Text != "")
+                                    AscentPFCodeLocations.Add(Service1.ShrinkString(pfsheet.Cells[row3, 1].Text), pfsheet.Cells[row3, 2].Text);
+                            }
+                            for (int row3 = 2; row3 <= PayrollCodeLastRow; row3++)
+                            {
+                                if (!AscentPayrollCodeLocations.ContainsKey(Service1.ShrinkString(payrollcodesheet.Cells[row3, 2].Text)) && payrollcodesheet.Cells[row3, 2].Text != "")
+                                    AscentPayrollCodeLocations.Add(Service1.ShrinkString(payrollcodesheet.Cells[row3, 2].Text), payrollcodesheet.Cells[row3, 1].Text);
                             }
                             var GradeSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Grades")];
                             int GradeLastRow = GradeSheet.Dimension.End.Row;
@@ -323,7 +336,7 @@ namespace ExcelAutomationService
                                 {
                                     outputWorksheet.Cells[row7, 8].Value = Firstname;
                                 }
-                                var Gender = inputWorkSheet.Cells[row, gender].GetValue<string>();
+                                var Gender = inputWorkSheet.Cells[row, gender].Text;
                                 //Method to Validate Gender
                                 Gender = Service1.ValidateGender(Gender);
                                 outputWorksheet.Cells[row7, 2].Value = Gender;
@@ -356,23 +369,23 @@ namespace ExcelAutomationService
                                         outputWorksheet.Cells[row7, 7].Value = Emprelation;
                                         break;
                                 }
-                                var MaritalStatus = inputWorkSheet.Cells[row, marriedornot].GetValue<string>();
+                                var MaritalStatus = inputWorkSheet.Cells[row, marriedornot].Text;
                                 //Method to validate marital status
                                 MaritalStatus = Service1.ValidateMaritalStatus(MaritalStatus);
                                 outputWorksheet.Cells[row7, 9].Value = MaritalStatus;
-                                var email = inputWorkSheet.Cells[row, emailid].GetValue<string>();
+                                var email = inputWorkSheet.Cells[row, emailid].Text;
                                 outputWorksheet.Cells[row7, 69].Value = email;
                                 var empgr = inputWorkSheet.Cells[row, EmployeeGrade].Text;
                                 outputWorksheet.Cells[row7, 52].Value = empgr;
                                 outputWorksheet.Cells[row7, 74].Value = HRID;
                                 outputWorksheet.Cells[row7, 31].Value = "00000";
-                                var date = inputWorkSheet.Cells[row, dob].GetValue<string>();
+                                var date = inputWorkSheet.Cells[row, dob].Text;
                                 date = date.Replace(" ", "");
                                 if ((date.Length == 10) && (date[4] == '-'))
                                 {
                                     outputWorksheet.Cells[row7, 40].Value = date;
                                 }
-                                date = inputWorkSheet.Cells[row, payrollstartdate].GetValue<string>();
+                                date = inputWorkSheet.Cells[row, payrollstartdate].Text;
 
                                 date = date.Replace(" ", "");
                                 if ((date.Length == 10) && (date[4] == '-'))
@@ -406,7 +419,7 @@ namespace ExcelAutomationService
                                 string r = Service1.ShrinkString(filePath);
                                 if (r.Contains("mcafee") || r.Contains("musarubra"))
                                 {
-                                    var grade = inputWorkSheet.Cells[row, EmployeeGrade].GetValue<string>();
+                                    var grade = inputWorkSheet.Cells[row, EmployeeGrade].Text;
                                     string gr = grade.ToLower();
                                     if (gr.Contains("grade"))
                                     {
@@ -421,7 +434,7 @@ namespace ExcelAutomationService
                                     CautionId.Add(HRID);
                                     CautionNationality.Add(Nationality);
                                 }
-                                var Pension = inputWorkSheet.Cells[row, pension].GetValue<string>();
+                                var Pension = inputWorkSheet.Cells[row, pension].Text;
                                 Pension = Pension.ToLower();
                                 Pension = Pension.Replace(" ", "");
                                 switch (Pension)
@@ -442,28 +455,6 @@ namespace ExcelAutomationService
                                         Pension = "0";
                                         break;
                                 }
-                                //for (row2 = 2; row2 <= OrgAssignmentsDataSheetLastRow; row2++)
-                                //{
-                                //    var id = OrgAssignmentsDataSheet.Cells[row2, 1].GetValue<string>();
-                                //    if (id.Equals(HRID))
-                                //    {
-                                //        //outputWorksheet.Cells[row7, 54].Value = OrgAssignmentsDataSheet.Cells[row2, 7].GetValue<string>(); ;
-
-                                //    }
-                                //}
-                                //int n = Service1.getSheetNumber(filePath, "Cost Center code");
-                                //var inputcostcentersheet = package.Workbook.Worksheets[n];
-                                //int inputcostcenterLastRow = inputcostcentersheet.Dimension.End.Row;
-                                //var locationcode = "!!!";
-                                //for (int i = 2; i <= inputcostcenterLastRow; i++)
-                                //{
-                                //    var id = inputcostcentersheet.Cells[i, 1].GetValue<string>();
-                                //    if (HRID.Equals(id))
-                                //    {
-                                //        locationcode = inputcostcentersheet.Cells[i, 2].GetValue<string>();
-                                //        outputWorksheet.Cells[row7, 54].Value = locationcode;
-                                //    }
-                                //}
                                 using (var package4 = new ExcelPackage(new FileInfo(ascendcodes)))
                                 {
                                     int n = Service1.getSheetNumber(ascendcodes, "Status");
@@ -483,7 +474,11 @@ namespace ExcelAutomationService
                                     n = Service1.getSheetNumber(ascendcodes, "Payroll Code");
                                     var AscendPayrollCode = package4.Workbook.Worksheets[n];
                                     outputWorksheet.Cells[row7, 34].Value = AscendPayrollCode.Cells[2, 1].GetValue<string>();
-                                    if (filePath.ToLower().Contains("anthology")&& PTLocation.ToLower().Contains("chennai")) 
+                                    //if (filePath.ToLower().Contains("anthology")&& PTLocation.ToLower().Contains("chennai")) 
+                                    //{
+                                    //    outputWorksheet.Cells[row7, 34].Value = AscendPayrollCode.Cells[3, 1].GetValue<string>();
+                                    //}
+                                    if (filePath.ToLower().Contains("musarubra") && empgr.ToLower().Contains("98"))
                                     {
                                         outputWorksheet.Cells[row7, 34].Value = AscendPayrollCode.Cells[3, 1].GetValue<string>();
                                     }
@@ -502,7 +497,10 @@ namespace ExcelAutomationService
                                 {
                                     validCharsRegex = new Regex("[^a-zA-Z ]");
                                     outputWorksheet.Cells[row7, 95].Value = Service1.CapitalizeEachWord(validCharsRegex.Replace(BeneficiariesData[HRID]["Beneficiary Name"], ""));
-                                    outputWorksheet.Cells[row7, 29].Value = BeneficiariesData[HRID]["Sort Code"];
+                                    if(BeneficiariesData[HRID]["Sort Code"]!="")
+                                        outputWorksheet.Cells[row7, 29].Value = BeneficiariesData[HRID]["Sort Code"];
+                                    else
+                                        outputWorksheet.Cells[row7, 29].Value = BeneficiariesData[HRID]["BIC / SWIFT"];
                                     outputWorksheet.Cells[row7, 30].Value = BeneficiariesData[HRID]["Account Number"];
                                     string bankname= BeneficiariesData[HRID]["Bank Name"];
                                     if (AscentBanksDetailed.ContainsKey(bankname))
@@ -521,7 +519,17 @@ namespace ExcelAutomationService
                                     }
                                 }
                                 string loc = outputWorksheet.Cells[row7, 56].Text;
-                                loc = loc.Replace("Remote - IND -", "");
+                                loc = Service1.ShrinkString(loc);
+                                loc = loc.Replace("remote-ind-","");
+                                loc = loc.Replace("india", "");
+                                if (AscentPayrollCodeLocations.ContainsKey(loc))
+                                {
+                                    outputWorksheet.Cells[row7, 34].Value = AscentPayrollCodeLocations[loc];
+                                }
+                                if (AscentPFCodeLocations.ContainsKey(loc))
+                                {
+                                    outputWorksheet.Cells[row7,61].Value = AscentPFCodeLocations[loc];
+                                }
                                 loc = Service1.ShrinkString(loc);
                                 if (AscentLocations.ContainsKey(loc)){
                                     outputWorksheet.Cells[row7, 56].Value = AscentLocations[loc];
@@ -536,77 +544,6 @@ namespace ExcelAutomationService
                                 {
                                     outputWorksheet.Cells[row7, 52].Value = AscentGrades[grd];
                                 }
-                                //for (row2 = 2; row2 <= BenefeciarieslastRow; row2++)
-                                //{
-                                //    var id = BenefeciariesDataSheet.Cells[row2, bfhrid].GetValue<string>();
-                                //    if (HRID.Equals(id))
-                                //    {
-                                //        validCharsRegex = new Regex("[^a-zA-Z ]");//logic to remove special characters
-                                //        outputWorksheet.Cells[row7, 95].Value = Service1.CapitalizeEachWord(validCharsRegex.Replace(BenefeciariesDataSheet.Cells[row2, primarynameasperbank].Text, ""));
-                                //        var ifsc = BenefeciariesDataSheet.Cells[row2, bfifsc].Text;
-                                //        ifsc = ifsc.Replace(" ", "");
-                                //        ifsc = Service1.ValidateIFSC(BenefeciariesDataSheet.ToString(), HRID, ifsc);
-                                //        if (ifsc.Length == 11) { outputWorksheet.Cells[row7, 29].Value = ifsc; }
-                                //        outputWorksheet.Cells[row7, 30].Value = BenefeciariesDataSheet.Cells[row2, bfacno].Text;
-                                //        var bankname = BenefeciariesDataSheet.Cells[row2, bfbankname].Text;
-                                //        bankname = Service1.ShrinkString(bankname);
-                                //        bankname = bankname.Replace("ltd", "");
-                                //        bankname = bankname.Replace("limited", "");
-                                //        bankname = bankname.Replace("pvt", "");
-                                //        bankname = bankname.Replace(".", "");
-                                //        bankname = bankname.Replace("branch", "");
-                                //        bool containsBank = bankname.Contains("bank");
-                                //        if (!containsBank)
-                                //        {
-                                //            bankname = bankname + "bank";
-                                //        }
-                                //        using (var package2 = new ExcelPackage(new FileInfo(ascendcodes)))
-                                //        {
-                                //            int t = Service1.getSheetNumber(ascendcodes, "Locations");
-                                //            var LocationSheet = package2.Workbook.Worksheets[t];
-                                //            t = Service1.getSheetNumber(ascendcodes, "Banks Detailed");
-                                //            var Ascendsheet = package2.Workbook.Worksheets[t];
-                                //            t = Service1.getSheetNumber(ascendcodes, "Grades");
-                                //            var GradeSheet = package2.Workbook.Worksheets[t];
-                                //            int GradeLastRow = GradeSheet.Dimension.End.Row;
-                                //            int AscendLastRow = Ascendsheet.Dimension.End.Row;
-                                //            int LocationsLastRow = LocationSheet.Dimension.End.Row;
-                                //            int description = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "description");
-                                //            int code = Service1.getColumnNumber(ascendcodes, LocationSheet.ToString(), "code");
-                                //            //for (int row5 = 2; row5 <= AscendLastRow; row5++)
-                                //            //{
-                                //            //    var bank = Ascendsheet.Cells[row5, 2].GetValue<string>();
-                                //            //    bank = Service1.ShrinkString(bank);
-                                //            //    containsBank = bank.Contains("bank");
-                                //            //    if (!containsBank)
-                                //            //    {
-                                //            //        bank = bank + "bank";
-                                //            //    }
-                                //            //    if (bank.Equals(bankname))
-                                //            //    {
-                                //            //        outputWorksheet.Cells[row7, 28].Value = Ascendsheet.Cells[row5, 1].GetValue<string>();
-                                //            //    }
-                                //            //}
-                                //            //if (AscentBanksDetailed.ContainsKey(bankname))
-                                //            //{
-                                //            //    outputWorksheet.Cells[row7, 28].Value = AscentBanksDetailed[bankname];
-                                //            //}
-                                //            //string loc = outputWorksheet.Cells[row7, 56].Text;
-                                //            //loc = loc.Replace("Remote - IND -", "");
-                                //            //loc = Service1.ShrinkString(loc);
-                                //            //if (AscentLocations.ContainsKey(loc))
-                                //            //{
-                                //            //    outputWorksheet.Cells[row7, 56].Value = AscentLocations[loc];
-                                //            //}
-                                //            //string grd = inputWorkSheet.Cells[row, EmployeeGrade].Text;
-
-                                //            //if (AscentGrades.ContainsKey(grd))
-                                //            //{
-                                //            //    outputWorksheet.Cells[row7, 52].Value = AscentGrades[grd];
-                                //            //}
-                                //        }
-                                //    }
-                                //}
                                 row7++;
                             }
                         }
@@ -629,7 +566,7 @@ namespace ExcelAutomationService
                             }
                             htmlTable.Append("</table>");
                             string subject = Service1.CapitalizeEachWord(Service1.ClientName) + ": Automation Alerts";
-                            string body = "The nationality of new joinners is different in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString()+"<br>Please check the Expat PF contribution";
+                            string body = "The nationality of new joinners is different in input file: " + Path.GetFileName(filePath) + "<br><br>" + htmlTable.ToString()+"<br>Please check the Expat PF contribution.<br>";
                             if (Service1.subject == "") 
                             {
                                 Service1.subject = subject;

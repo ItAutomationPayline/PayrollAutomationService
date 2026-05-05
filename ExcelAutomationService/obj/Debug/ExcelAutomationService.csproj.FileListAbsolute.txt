@@ -92,3 +92,14 @@ D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationServic
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Security.Cryptography.Xml.dll
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Security.Cryptography.Xml.xml
 D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\NCalc.dll
+D:\ExcelAutomationService\ExcelAutomationService\obj\Debug\ExcelAutomationService.exe.config
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\AngleSharp.dll
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\DocumentFormat.OpenXml.dll
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\DocumentFormat.OpenXml.Framework.dll
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\HtmlToOpenXml.dll
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Text.Encoding.CodePages.dll
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\AngleSharp.xml
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\DocumentFormat.OpenXml.xml
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\DocumentFormat.OpenXml.Framework.xml
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\HtmlToOpenXml.xml
+D:\ExcelAutomationService\ExcelAutomationService\bin\Debug\System.Text.Encoding.CodePages.xml

@@ -10,7 +10,7 @@ namespace ExcelAutomationService
 {
     public class QuerySheet
     {
-        public static void DobQuery(string destinationFolder,Dictionary<string,string> doj)
+        public static void DobQuery(string destinationFolder, Dictionary<string, string> doj)
         {
             string filePath = Path.Combine(destinationFolder, "QuerySheet.xlsx");
             FileInfo fileInfo = new FileInfo(filePath);
@@ -33,7 +33,7 @@ namespace ExcelAutomationService
                 //outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
             }
         }
-        public static void DojQuery(string destinationFolder, Dictionary<string, string> doj) 
+        public static void DojQuery(string destinationFolder, Dictionary<string, string> doj)
         {
             string filePath = Path.Combine(destinationFolder, "QuerySheet.xlsx");
             FileInfo fileInfo = new FileInfo(filePath);
@@ -56,7 +56,7 @@ namespace ExcelAutomationService
                 //outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
             }
         }
-        public static void ExistingNationalityQuery(string destinationFolder, Dictionary<string, string> exn) 
+        public static void ExistingNationalityQuery(string destinationFolder, Dictionary<string, string> exn)
         {
             string filePath = Path.Combine(destinationFolder, "QuerySheet.xlsx");
             FileInfo fileInfo = new FileInfo(filePath);
@@ -79,21 +79,21 @@ namespace ExcelAutomationService
                 //outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
             }
         }
-        public static void NewJoinerNationalityQuery(string destinationFolder, List<string> id, List<string> nat) 
+        public static void NewJoinerNationalityQuery(string destinationFolder, List<string> id, List<string> nat)
         {
             string filePath = Path.Combine(destinationFolder, "QuerySheet.xlsx");
             FileInfo fileInfo = new FileInfo(filePath);
             // Load existing file or create a new one
-            using (var outputPackage = File.Exists(filePath) ? new ExcelPackage(fileInfo): new ExcelPackage())         // Create new
+            using (var outputPackage = File.Exists(filePath) ? new ExcelPackage(fileInfo) : new ExcelPackage())         // Create new
             {
                 var outputWorksheet = outputPackage.Workbook.Worksheets.Add("New joiner's Nationality");
                 string newFileName = Path.Combine(destinationFolder, "QuerySheet.xlsx");
                 outputWorksheet.Cells[1, 1].Value = "HRID";
                 outputWorksheet.Cells[1, 2].Value = "Nationality";
                 int row = 2;
-                for (int i=0;i<=id.Count-1;i++)
+                for (int i = 0; i <= id.Count - 1; i++)
                 {
-                    outputWorksheet.Cells[row, 1].Value= id[i];
+                    outputWorksheet.Cells[row, 1].Value = id[i];
                     outputWorksheet.Cells[row, 2].Value = nat[i];
                     row++;
                 }
@@ -109,7 +109,7 @@ namespace ExcelAutomationService
             FileInfo fileInfo = new FileInfo(filePath);
 
             // Load existing file or create a new one
-            using (var outputPackage = File.Exists(filePath)? new ExcelPackage(fileInfo): new ExcelPackage())         // Create new
+            using (var outputPackage = File.Exists(filePath) ? new ExcelPackage(fileInfo) : new ExcelPackage())         // Create new
             {
                 var outputWorksheet = outputPackage.Workbook.Worksheets.Add("Gender");
                 int row = 1;
@@ -132,7 +132,7 @@ namespace ExcelAutomationService
             FileInfo fileInfo = new FileInfo(filePath);
 
             // Load existing file or create a new one
-            using (var outputPackage = File.Exists(filePath)? new ExcelPackage(fileInfo): new ExcelPackage())
+            using (var outputPackage = File.Exists(filePath) ? new ExcelPackage(fileInfo) : new ExcelPackage())
             {
                 var outputWorksheet = outputPackage.Workbook.Worksheets.Add("Variable Amount");
                 outputWorksheet.Cells[1, 1].Value = "HRID";
@@ -153,7 +153,7 @@ namespace ExcelAutomationService
                 //outputPackage.SaveAsAsync(new FileInfo(destinationFolder));
             }
         }
-        public static void RehireCasesQuery(string destinationFolder, List<string>CautionId, List<string> evtype, List<string> doj, List<string> nm, List<string> UACN)
+        public static void RehireCasesQuery(string destinationFolder, List<string> CautionId, List<string> evtype, List<string> doj, List<string> nm, List<string> UACN)
         {
             string filePath = Path.Combine(destinationFolder, "QuerySheet.xlsx");
             FileInfo fileInfo = new FileInfo(filePath);

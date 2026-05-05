@@ -197,8 +197,8 @@ namespace ExcelAutomationService
 
                             for (int row3 = 2; row3 <= LocationsLastRow; row3++)
                             {
-                                if (!AscentLocations.ContainsKey(LocationSheet.Cells[row3, description].Text) && LocationSheet.Cells[row3, description].Text != "")
-                                    AscentLocations.Add(LocationSheet.Cells[row3,description].Text, LocationSheet.Cells[row3, code].Text);
+                                if (!AscentLocations.ContainsKey(Service1.ShrinkString(LocationSheet.Cells[row3, description].Text)) && LocationSheet.Cells[row3, description].Text != "")
+                                    AscentLocations.Add(Service1.ShrinkString(LocationSheet.Cells[row3,description].Text), LocationSheet.Cells[row3, code].Text);
                             }
                             var GradeSheet = package2.Workbook.Worksheets[Service1.getSheetNumber(ascendcodes, "Grades")];
                             int GradeLastRow = GradeSheet.Dimension.End.Row;
@@ -390,9 +390,9 @@ namespace ExcelAutomationService
                                 if (!string.IsNullOrEmpty(bgColor.Rgb) && !bgColor.Rgb.Equals("FFFFFF"))
                                 {
                                     outputWorksheet.Cells[row7, 56].Value = PTLocation;
-                                    if (AscentLocations.ContainsKey(PTLocation))
+                                    if (AscentLocations.ContainsKey(Service1.ShrinkString(PTLocation)))
                                     {
-                                        outputWorksheet.Cells[row7, 56].Value=AscentLocations[PTLocation];
+                                        outputWorksheet.Cells[row7, 56].Value=AscentLocations[Service1.ShrinkString(PTLocation)];
                                     }
                                 }
                                 #endregion
@@ -488,7 +488,10 @@ namespace ExcelAutomationService
                                         outputWorksheets.Cells[outputWorksheets.Dimension.Address].AutoFitColumns();
                                         m++;
                                     }
-                                    if (sheetname.ToLower().Contains("pension") || sheetname.ToLower().Contains("uan") || sheetname.ToLower().Contains("birth") || sheetname.ToLower().Contains("date of joining") || sheetname.ToLower().Contains("pf wef dt") || sheetname.ToLower().Contains("payroll start date") || sheetname.ToLower().Contains("group joining date") || sheetname.ToLower().Contains("gender"))
+                                    if (sheetname.ToLower().Contains("pension") || sheetname.ToLower().Contains("uan") || sheetname.ToLower().Contains("birth") 
+                                        || sheetname.ToLower().Contains("date of joining") || sheetname.ToLower().Contains("pf wef dt") 
+                                        || sheetname.ToLower().Contains("payroll start date") || sheetname.ToLower().Contains("group joining date") 
+                                        || sheetname.ToLower().Contains("gender"))
                                     {
                                         int OutputLastRow = outputWorksheets.Dimension.End.Row;
                                         outputWorksheets.Cells[2, 3].Value = "Before processing kindly confirm with client.";
@@ -496,7 +499,14 @@ namespace ExcelAutomationService
                                         columnRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                                         columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
                                     }
-                                    
+                                    if (sheetname.ToLower().Contains("location"))
+                                    {
+                                        int OutputLastRow = outputWorksheets.Dimension.End.Row;
+                                        outputWorksheets.Cells[2, 3].Value = "Before processing kindly change pf reg code if applicable.";
+                                        var columnRange = outputWorksheets.Cells[1, 2, OutputLastRow, 2];
+                                        columnRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                        columnRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.Red);
+                                    }
                                     if (sheetname.ToLower().Contains("pay scale"))
                                     {
                                         int OutputLastRow = outputWorksheets.Dimension.End.Row;
